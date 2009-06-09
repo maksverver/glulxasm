@@ -1,0 +1,35 @@
+Psuedo-instructions:
+
+    version(a,b,c)                  change version number in header
+    stack_size(size)                change stack size in header
+    decoding_tbl(offset)            change decoding table offset in header
+    eof()                           end-of-file (write output, then exit)
+
+    pad(boundary)                   pad output bytes to multiple of `boundary'
+    label(id)                       introduce label called `id'
+
+Instructions:
+    func_stack(..locals..)          function with stack arguments
+    func_local(..locals..)          function with local arguments
+    db(x)                           output `x' as a byte
+    dw(x)                           output `x' as a word (2 bytes)
+    dd(x)                           output `x' as a dword (4 bytes)
+    dc(s)                           output `s` as a C-style string
+    fill(n)                         output `n' zeroes
+    instr(o,..operands..)           output instruction with opcode `o'
+    opcode(..operands..)            output opcode
+
+    A set of local variables is passed as a pair, containing size and count.
+    e.g. func_stack((2,1),(4,3)) creates a function with one word and three
+    dword local variables.
+
+Operands:
+    op(m,v)                     operand with mode `m' and value `v'
+    imm(c) or c                 reference to constant value
+    mem(x)                      reference to memory at offset memstart + x
+    ram(x)                      reference to memory at offset ramstart + x
+    loc(x)                      reference local variable at offset x
+    stk()                       reference to value at the top of the stack
+
+    imm(), mem(), ram() and loc() each take an optional second argument that
+    overrides the operand size (1, 2 or 4) which is auto-detected by default.
