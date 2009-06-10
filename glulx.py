@@ -3,6 +3,7 @@ import struct
 MAGIC = 0x476C756C
 
 class Header:
+    # TODO: make this an Op of its own!
 
     def __init__(self):
         self.magic          = MAGIC

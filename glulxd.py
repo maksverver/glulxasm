@@ -8,6 +8,9 @@ if len(sys.argv) != 2:
     print 'Usage: glulxda <file.ulx>'
     sys.exit(0)
 
+def is_ascii(v):
+    return v >= 32 and v <= 126
+
 def decode_function_header(data, offset):
     '''Tries to decode a function header in data starting from offset. Returns
        a tuple of function type and a list of localtype/localcount values
@@ -86,15 +89,15 @@ def decode_instruction(data, offset):
         mnem, param = opcodemap[opcode]
         operands    = decode_operands(data, offset + opcode_len, len(param))
         if operands is not None:
-            return Instr(opcode, operands)
+            return Instr(opcode, operands, offset)
     except KeyError:
         return None
 
 def decode_instructions(data, start, instrs):
+
     # Decode instructions
     todo     = [ start ]
     seen     = { start: None }
-    outcalls = set()
     while todo:
         offset   = todo.pop()
         instr    = decode_instruction(data, offset)
@@ -107,51 +110,26 @@ def decode_instructions(data, start, instrs):
 
         instrs[offset] = instr
 
-        # Recognize (relative) branch targets
-        i = instr.parameters.find('b')
-        if i >= 0:
-            oper = instr.operands[i]
-            if oper.is_immediate() and oper.value not in (0, 1):
-                target = (offset + len(instr) + oper.value - 2)&0xffffffff
-                branches.append(target)
-
-        # Recognize (absolute) branch targets
-        i = instr.parameters.find('a')
-        if i >= 0:
-            oper = instr.operands[i]
-            if oper.is_immediate():
-                target = oper.value
-                branches.append(target)
-
-        # Recognize call targets
-        i = instr.parameters.find('f')
-        if i >= 0:
-            oper = instr.operands[i]
-            if oper.is_immediate():
-                target = function_start(data, oper.value)
-                if target is None:
-                    print >>sys.stderr, 'Warning: invalid call target ' + \
-                        '%d at offset %d!' % (target, offset)
-                else:
-                    outcalls.add(target)
-
-        # Recognize instruction which end a sequence of instructions:
-        if instr.mnemonic not in ( 'tailcall', 'ret', 'throw', 'jump',
-                                    'absjump', 'quit', 'restart'):
-            # Queue next instruction
-            offset += len(instr)
-            branches.append(offset)
-
-        # Add branches to new locations to the todo list
-        for target in branches:
+        target = instr.branch_target()
+        if target is not None:
             if target >= len(data):
                 print >>sys.stderr, 'Warning: invalid absolute ' + \
                     'branch target %d at offset %d!' % (target, offset)
-            elif target not in seen and instrs[target] is None:
+            else:
+                branches.append(target)
+
+        # Recognize instruction which end a sequence of instructions:
+        # NOTE: simplified this to 'ret' since all functions seem to end with
+        #  this' even though more branching instructions exist. Old list was:
+        # ( 'tailcall', 'ret', 'throw', 'jump', 'absjump', 'quit', 'restart' )
+        if instr.mnemonic != 'ret':
+            # Queue next instruction
+            branches.append(offset + len(instr))
+
+        for target in branches:
+            if target not in seen and instrs[target] is None:
                 seen[target] = True
                 todo.append(target)
-
-    return outcalls
 
 def decode_function(data, start, ops):
     "Try to decode a function at `start' and return the number of bytes decoded."
@@ -174,6 +152,16 @@ def decode_function(data, start, ops):
     while ops[offset] is not None:
         offset += len(ops[offset])
     return offset - start
+
+
+def get_bindata(data, offset, ops, boundaries, labels, max_len = 16):
+    "Get a chunk of at most max_len bytes, not crossing any section boundaries"
+    end = offset + 1
+    while ( end not in boundaries and end not in labels and
+            ops[end] is None and end - offset < max_len ):
+        end += 1
+    return end
+
 
 # Read data
 data = file(sys.argv[1], 'rb').read()
@@ -228,6 +216,35 @@ while offset < header.extstart:
 
     offset += decoded
 
+# Scan for label positions and labels
+can_label = set()
+has_label = set()
+offset = header.size()
+while offset < header.extstart:
+    can_label.add(offset)
+    op = ops[offset]
+    if op is None:
+        offset += 1
+    else:
+        target = op.target()
+        if target is not None:
+            has_label.add(target)
+        if hasattr(op, 'operands') and hasattr(op, 'parameters'):
+            for (t,o) in zip(op.parameters, op.operands):
+                if o.is_mem_ref():
+                    has_label.add(o.value)
+                if o.is_ram_ref():
+                    has_label.add(header.ramstart + o.value)
+                if o.is_immediate() and t == 'm':
+                    has_label.add(o.value)
+        offset += len(op)
+
+# Find valid label positions and names:
+labels = {}
+for a in sorted(has_label.intersection(can_label)):
+    labels[a] = 'l%d' % (len(labels) + 1)
+del can_label
+del has_label
 
 # Print memory (ROM/RAM) contents (not including the header)
 print 'label("romstart")'
@@ -243,36 +260,82 @@ while offset < header.extstart:
         print ''
         print 'label("start_func")'
 
+    if offset in labels:
+        print 'label("%s")  # %08x' % (labels[offset], offset)
+
     op = ops[offset]
     if op is None:
         # Print a chunk of at most 16 bytes, not crossing any section boundaries
-        n = 1
-        while ( offset + n not in boundaries and
-                n < 16 and ops[offset + n] is None ):
-            n += 1
-        values = [ unpack(data, i, 1) for i in range(offset, offset + n) ]
-        print '\tdb(%s)  # %08x' % (','.join(['%3d'%v for v in values]), offset)
-        offset += n
+        end = get_bindata(data, offset, ops, boundaries, labels)
+        values = [ unpack(data, i, 1) for i in range(offset, end) ]
+        descr = ''
+        for v in values:
+            if is_ascii(v): descr += chr(v)
+            else:           descr += '.'
+        print '\tdb(%s)  # %s  %08x' % ( ','.join(['%3d'%v for v in values]),
+                                         descr, offset)
+        offset = end
     else:
         # Print decoded operations:
         if isinstance(op, Instr):
             args = []
-            for o in op.operands:
+            for i in range(len(op.operands)):
+                o = op.operands[i]
+                t = op.parameters[i]
+                v = o.value
+
                 if o.is_immediate():
-                    if o.is_canonical():
-                        args.append('%d'%o.value)
+
+                    # HACK: convert relative branch target to absolute address
+                    w = v + op.offset + len(op) - 2
+
+                    if t == 'b' and w in labels:
+                        if o.is_canonical:
+                            args.append('lb("%s")'%labels[w])
+                        else:
+                            args.append('lb("%s", %d)'%(labels[w], len(o)))
+                    elif t in ('a', 'f') and v in labels:
+                        if o.is_canonical:
+                            args.append('la("%s")'%labels[v])
+                        else:
+                            args.append('la("%s", %d)'%(labels[v], len(o)))
+                    elif t == 'm' and v in labels:
+                        if o.is_canonical:
+                            args.append('limm("%s")'%labels[v])
+                        else:
+                            args.append('limm("%s", %d)'%(labels[v], len(o)))
+                    elif o.is_canonical():
+                        args.append('%d'%v)
                     else:
-                        args.append('imm(%d,%d)'%(o.value, len(o)))
+                        args.append('imm(%d,%d)'%(v, len(o)))
+
                 elif o.is_mem_ref():
-                    if o.is_canonical():
+
+                    if v in labels:
+                        if o.is_canonical:
+                            args.append('lmem("%s")'%labels[v])
+                        else:
+                            args.append('lmem("%s", %d)'%(labels[v], len(o)))
+                    elif o.is_canonical():
                         args.append('mem(%d)'%o.value)
                     else:
                         args.append('mem(%d,%d)'%(o.value, len(o)))
+
                 elif o.is_ram_ref():
-                    if o.is_canonical():
+
+                    # convert ram-relative address to absolute address
+                    w = v + header.ramstart
+
+                    if w in labels:
+                        if o.is_canonical:
+                            args.append('lram("%s")'%labels[w])
+                        else:
+                            args.append('lram("%s", %d)'%(labels[w], len(o)))
+                    elif o.is_canonical():
                         args.append('ram(%d)'%o.value)
                     else:
                         args.append('ram(%d,%d)'%(o.value, len(o)))
+
                 elif o.is_local_ref():
                     if o.is_canonical():
                         args.append('loc(%d)'%o.value)

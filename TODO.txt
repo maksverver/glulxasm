@@ -1,0 +1,6 @@
+glulxd:
+- ensure all code is identified
+- implement labels
+
+glulxa:
+..

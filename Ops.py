@@ -4,6 +4,7 @@ from glulx import pack, hexs, signed_size, unsigned_size
 
 # paramaters:
 #   l  indicates a loaded argument
+#   m  indicates a loaded argument that is interpreted as a memory address
 #   s  indicates a stored argument
 #   b  indicates a branch target (target is IP - 2 + offset), or return 0/1
 #   a  indicates an absolute branch target (target is offset)
@@ -48,14 +49,14 @@ opcodelist = [
     (  0x42, 'copyb',           'ls'),
     (  0x44, 'sexs',            'ls'),
     (  0x45, 'sexb',            'ls'),
-    (  0x48, 'aload',           'lls'),
-    (  0x49, 'aloads',          'lls'),
-    (  0x4A, 'aloadb',          'lls'),
-    (  0x4B, 'aloadbit',        'lls'),
-    (  0x4C, 'astore',          'lll'),
-    (  0x4D, 'astores',         'lll'),
-    (  0x4E, 'astoreb',         'lll'),
-    (  0x4F, 'astorebit',       'lll'),
+    (  0x48, 'aload',           'mls'),
+    (  0x49, 'aloads',          'mls'),
+    (  0x4A, 'aloadb',          'mls'),
+    (  0x4B, 'aloadbit',        'mls'),
+    (  0x4C, 'astore',          'mll'),
+    (  0x4D, 'astores',         'mll'),
+    (  0x4E, 'astoreb',         'mll'),
+    (  0x4F, 'astorebit',       'mll'),
     (  0x50, 'stkcount',        's'),
     (  0x51, 'stkpeek',         'ls'),
     (  0x52, 'stkswap',         ''),
@@ -63,7 +64,7 @@ opcodelist = [
     (  0x54, 'stkcopy',         'l'),
     (  0x70, 'streamchar',      'l'),
     (  0x71, 'streamnum',       'l'),
-    (  0x72, 'streamstr',       'l'),
+    (  0x72, 'streamstr',       'm'),
     (  0x73, 'streamunichar',   'l'),
     ( 0x100, 'gestalt',         'lls'),
     ( 0x101, 'debugtrap',       'l'),
@@ -82,18 +83,18 @@ opcodelist = [
     ( 0x127, 'protect',         'll'),
     ( 0x130, 'glk',             'lls'),
     ( 0x140, 'getstringtbl',    's'),
-    ( 0x141, 'setstringtbl',    'l'),
+    ( 0x141, 'setstringtbl',    'm'),
     ( 0x148, 'getiosys',        'ss'),
     ( 0x149, 'setiosys',        'll'),
-    ( 0x150, 'linearsearch',    'llllllls'),
-    ( 0x151, 'binarysearch',    'llllllls'),
-    ( 0x152, 'linkedsearch',    'lllllls'),
+    ( 0x150, 'linearsearch',    'mlmlllls'),
+    ( 0x151, 'binarysearch',    'mlmlllls'),
+    ( 0x152, 'linkedsearch',    'mlmllls'),
     ( 0x160, 'callf',           'fs'),
     ( 0x161, 'callfi',          'fls'),
     ( 0x162, 'callfii',         'flls'),
     ( 0x163, 'callfiii',        'fllls'),
-    ( 0x170, 'mzero',           'll'),
-    ( 0x171, 'mcopy',           'lll'),
+    ( 0x170, 'mzero',           'lm'),
+    ( 0x171, 'mcopy',           'lmm'),
     ( 0x178, 'malloc',          'ls'),
     ( 0x179, 'mfree',           'l'),
     ( 0x180, 'accelfunc',       'll'),
@@ -102,12 +103,15 @@ opcodelist = [
 opcodemap = dict([ (num, (mnem, args)) for (num, mnem, args) in opcodelist ])
 
 class Op:
-    def __init__(self):
-        self.data   = ''
-        self.offset = 0
+    def __init__(self, data = '', offset = 0):
+        self.data   = data
+        self.offset = offset
 
     def __len__(self):
         return len(self.data)
+
+    def target(self):
+        return None
 
 class Label(Op):
     def __init__(self, name):
@@ -133,8 +137,8 @@ class Dd(Op):
         self.data  = struct.pack('!I', value&0xffffffff)
 
 class Instr(Op):
-    def __init__(self, opcode, operands):
-        Op.__init__(self)
+    def __init__(self, opcode, operands, offset = 0):
+        Op.__init__(self, offset=offset)
 
         self.mnemonic, self.parameters = opcodemap[opcode]
 
@@ -162,6 +166,42 @@ class Instr(Op):
         # the the operands themselves
         for oper in operands:
             self.data += oper.data
+
+    def is_branch(self):
+        return self.parameters.find('b') >= 0 or self.parameters.find('a') >= 0
+
+    def is_call(self):
+        return self.parameters.find('f') >= 0
+
+    def branch_target(self):
+
+        # Recognize (relative) branch targets
+        i = self.parameters.find('b')
+        if i >= 0:
+            oper = self.operands[i]
+            if oper.is_immediate() and oper.value not in (0, 1):
+                return (self.offset + len(self) + oper.value - 2)&0xffffffff
+
+        # Recognize (absolute) branch targets
+        i = self.parameters.find('a')
+        if i >= 0:
+            oper = self.operands[i]
+            if oper.is_immediate():
+                target = oper.value
+                return target
+
+    def call_target(self):
+
+        # Recognize call targets
+        i = self.parameters.find('f')
+        if i >= 0:
+            oper = self.operands[i]
+            if oper.is_immediate():
+                return oper.value
+
+    def target(self):
+        return self.branch_target() or self.call_target()
+
 
 class Operand(Op):
     def __init__(self, mode, value):
