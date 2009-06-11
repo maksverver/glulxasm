@@ -44,6 +44,15 @@ def stack_size(size):
 def decoding_tbl(offset):
     header.decoding_tbl = offset
 
+def absolute_labels():
+    ls = {}
+    for l, i in labels.iteritems():
+        if i == len(ops):
+            ls[l] = ops_len()
+        else:
+            ls[l] = ops[i].offset()
+    return ls
+
 def eof():
     # Resolve all references to labels:
     changed = 1
@@ -51,9 +60,10 @@ def eof():
         print >>sys.stderr, "resolving label references..."
         changed = 0
         offset  = 0
+        ls = absolute_labels()
         for op in ops:
             old_len = len(op)
-            op.resolve_references(labels)
+            op.resolve_references(ls)
             new_len = len(op)
             op.set_offset(offset)
             changed += old_len != new_len
@@ -123,7 +133,7 @@ def instr(opcode, *operands):
     return Instr(opcode, [ conv_imm(v) for v in operands ])
 
 def label(id):
-    labels[id] = ops_len()
+    labels[id] = len(ops)
 
 def db(*xs):
     return ByteData(xs, 1)

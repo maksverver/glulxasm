@@ -184,7 +184,10 @@ class Header(Op):
         self.extstart     = labels['extstart']
         self.endmem       = labels['endmem']
         self.start_func   = labels['start_func']
-        self.decoding_tbl = labels['decoding_tbl']
+        try:
+            self.decoding_tbl = labels['decoding_tbl']
+        except KeyError:
+            self.decoding_tbl = 0
 
 class Label(Op):
     def __init__(self, name):
@@ -419,7 +422,6 @@ class RamRefOperand(OperandBase):
         self._target = labels[self._label] - labels['ramstart']
         self.update()
 
-
 class Func(Op):
     def __init__(self, type, locals):
         self.type   = type
@@ -445,4 +447,7 @@ class Padding(Op):
 
     def update(self):
         b = self._boundary
-        self.data_ = '\0'*((b - self._offset%b)%b)
+        self._data = '\0'*((b - self._offset%b)%b)
+
+    def resolve_references(self, labels):
+        self.update()

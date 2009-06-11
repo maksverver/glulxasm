@@ -4,10 +4,6 @@ from glulx import *
 from Ops import *
 import sys, struct
 
-if len(sys.argv) != 2:
-    print 'Usage: glulxda <file.ulx>'
-    sys.exit(0)
-
 def is_ascii(v):
     return v >= 32 and v <= 126
 
@@ -171,7 +167,11 @@ def get_bindata(data, offset, ops, labels, max_len = 16):
 
 
 # Read data
-data = file(sys.argv[1], 'rb').read()
+if len(sys.argv) > 1:
+    data = file(sys.argv[1], 'rb').read()
+else:
+    data = sys.stdin.read()
+
 assert len(data) >= 256
 assert len(data)%256 == 0
 
