@@ -2,55 +2,13 @@ import struct
 
 MAGIC = 0x476C756C
 
-class Header:
-    # TODO: make this an Op of its own!
-
-    def __init__(self):
-        self.magic          = MAGIC
-        self.version        = 0x00030101  # 3.1.1
-        self.ramstart       = 0
-        self.extstart       = 0
-        self.endmem         = 0
-        self.stack_size     = 0
-        self.start_func     = 0
-        self.decoding_tbl   = 0
-        self.checksum       = 0
-
-    def header_checksum(self):
-        return (self.magic + self.version + self.ramstart + self.extstart +
-                self.endmem + self.stack_size + self.start_func +
-                self.decoding_tbl)&0xffffffff
-
-    def calculate_checksum(self, data):
-        checksum = self.header_checksum()
-        for i in xrange(36, self.extstart, 4):
-            checksum = (checksum + struct.unpack_from('!I', data, i)[0])&0xffffffff
-        return checksum
-
-    def update_checksum(self, data):
-        self.checksum = self.calculate_checksum(data)
-
-    def verify_checksum(self, data):
-        return self.checksum == self.calculate_checksum(data)
-
-    def pack(self):
-        return struct.pack('!IIIIIIIII',
-            self.magic, self.version, self.ramstart, self.extstart, self.endmem,
-            self.stack_size, self.start_func, self.decoding_tbl, self.checksum)
-
-    def unpack(self, data):
-        (self.magic, self.version, self.ramstart, self.extstart, self.endmem,
-         self.stack_size, self.start_func, self.decoding_tbl, self.checksum) = \
-         struct.unpack_from('!IIIIIIIII', data, 0)
-
-    def size(self):
-        return 36
-
 def pack(val, size):
     if size == 1: return struct.pack('!B', val&0xff)
     if size == 2: return struct.pack('!H', val&0xffff)
     if size == 4: return struct.pack('!I', val&0xffffffff)
     assert 0
+
+packs = pack
 
 def unpack(data, offset, size):
     if size == 1: return struct.unpack_from('!B', data, offset)[0]

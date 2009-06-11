@@ -1,3 +1,5 @@
 Key argument for the linearsearch/binarysearch/linkedsearch instructions could
 be either a memory address or not! We currently assume it is (which is probably
 true if the value is immediate).
+
+Auto-sizing of label references not yet supported.

@@ -23,9 +23,17 @@ for opcode, mnemomic, parameters in opcodelist:
     f = make_mnemonic_func(opcode, len(parameters))
     setattr(__import__(__name__), mnemomic, f)
 
-header = glulx.Header()
+header = Header()
 
 labels = { }
+ops = [ header ]
+
+def ops_len():
+    return ops[-1].offset() + len(ops[-1])
+
+def add_op(op):
+    op.set_offset(ops_len())
+    ops.append(op)
 
 def version(a,b,c):
     header.version = ((a&0xffff)<<16)|((b&0xff)<<8)|(c&0xff)
@@ -37,25 +45,37 @@ def decoding_tbl(offset):
     header.decoding_tbl = offset
 
 def eof():
-    header.ramstart     = labels['ramstart']
-    header.extstart     = labels['extstart']
-    header.endmem       = output_len
-    header.start_func   = labels['start_func']
+    # Resolve all references to labels:
+    changed = 1
+    while changed:
+        print >>sys.stderr, "resolving label references..."
+        changed = 0
+        offset  = 0
+        for op in ops:
+            old_len = len(op)
+            op.resolve_references(labels)
+            new_len = len(op)
+            op.set_offset(offset)
+            changed += old_len != new_len
+            offset += new_len
+        print >>sys.stderr, changed, "operations changed length."
 
-    # Chop off everything after extstart
-    data = output.getvalue()[:header.extstart]
+    # Compute output (cut off at extstart)
+    sio = StringIO()
+    for op in ops: sio.write(op.data())
+    data = sio.getvalue()[:header.extstart]
+    del sio
 
     # Fix header checksum:
     header.update_checksum(data)
-    data = header.pack() + data[header.size():]
+    data = header.data() + data[len(header):]
 
     # Write out
     sys.stdout.write(data)
     sys.exit(0)
 
 def pad(boundary):
-    # HACK! need to do real padding later.
-    return fill(((boundary - output_len)%boundary)%boundary)
+    return Padding(boundary)
 
 def op(mode, value):
     return Operand(mode, value)
@@ -96,29 +116,29 @@ def stk():
 
 def conv_imm(v):
     if isinstance(v, int): return imm(v)
-    assert isinstance(v, Operand)
+    assert isinstance(v, OperandBase)
     return v
 
 def instr(opcode, *operands):
     return Instr(opcode, [ conv_imm(v) for v in operands ])
 
 def label(id):
-    labels[id] = output_len
+    labels[id] = ops_len()
 
 def db(*xs):
-    return [ Db(x) for x in xs ]
+    return ByteData(xs, 1)
 
-def dw(x):
-    return [ Dw(x) for x in xs ]
+def dw(*xs):
+    return ByteData(xs, 2)
 
-def dd(x):
-    return [ Dd(x) for x in xs ]
+def dd(*xs):
+    return ByteData(xs, 4)
 
 def dc(s):
-    return Data(s + '\0')
+    return ByteData(map(ord, s + '\0'), 1)
 
 def fill(n):
-    return Data('\0'*n)
+    return ByteData([0]*n, 1)
 
 def func_stack(*args):
     return Func(0xc0, args)
@@ -126,9 +146,26 @@ def func_stack(*args):
 def func_local(*args):
     return Func(0xc1, args)
 
-output     = StringIO()
-output.write(header.pack())
-output_len = header.size()
+def lb(l, n=-1):
+    if n == -1: n = 4
+    return ImmediateOperand(l, n, True, True)
+
+def la(l, n=-1):
+    if n == -1: n = 4
+    return ImmediateOperand(l, n)
+
+def limm(l, n=-1):
+    if n == -1: n = 4
+    return ImmediateOperand(l, n)
+
+def lmem(l, n=-1):
+    if n == -1: n = 4
+    return MemRefOperand(l, n)
+
+def lram(l, n=-1):
+    if n == -1: n = 4
+    return RamRefOperand(l, n)
+
 while True:
     line = raw_input().strip()
     if line == '' or line[0] == '#': continue
@@ -137,5 +174,5 @@ while True:
         if not isinstance(obj, list):
             obj = [obj]
         for o in obj:
-            output.write(o.data)
-            output_len += len(o.data)
+            assert isinstance(o, Op)
+            add_op(o)

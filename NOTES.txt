@@ -2,11 +2,12 @@ Psuedo-instructions:
 
     version(a,b,c)                  change version number in header
     stack_size(size)                change stack size in header
-    decoding_tbl(offset)            change decoding table offset in header
     eof()                           end-of-file (write output, then exit)
 
     pad(boundary)                   pad output bytes to multiple of `boundary'
     label(id)                       introduce label called `id'
+
+    special labels: ramstart, extstart, start_func, endmem, decoding_tbl
 
 Instructions:
     func_stack(..locals..)          function with stack arguments
