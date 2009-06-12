@@ -101,7 +101,7 @@ opcodelist = [
     ( 0x171, 'mcopy',           'lmm'),
     ( 0x178, 'malloc',          'ls'),
     ( 0x179, 'mfree',           'l'),
-    ( 0x180, 'accelfunc',       'll'),
+    ( 0x180, 'accelfunc',       'lf'),
     ( 0x181, 'accelparam',      'll') ]
 
 opcodemap = dict([ (num, (mnem, args)) for (num, mnem, args) in opcodelist ])

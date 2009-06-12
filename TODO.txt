@@ -1,0 +1,2 @@
+glxd:
+ - decode encoded strings, so they can be emitted as functions

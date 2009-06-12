@@ -157,6 +157,46 @@ def decode_function(data, start, ops):
         offset += len(ops[offset])
     return offset - start
 
+def disassemble(data):
+    assert len(data) >= 256
+    assert len(data)%256 == 0
+
+    ops = [None]*len(data)
+
+    # Parse header
+    header = Header()
+    header.unpack(data)
+    ops[0] = header
+
+    # Verify checksum
+    assert header.magic == MAGIC
+    assert header.verify_checksum(data)
+
+    # Try to decode data
+    offset = len(header)
+    skipped = []
+    while offset < header.extstart:
+
+        if ops[offset] is None:
+            decode_function(data, offset, ops)
+
+        if ops[offset] is None:
+            skipped.append(unpack(data, offset, 1))
+            offset += 1
+        else:
+            if skipped:
+                # Warn if we may have skipped important data:
+                if skipped.count(0) < len(skipped) and \
+                   offset - len(skipped) != len(header):
+                    descr = ' '.join([ '%02x'%i for i in skipped[:10]])
+                    if len(skipped) > 10: descr += '..'
+                    print >>sys.stderr, 'Warning: skipped %d bytes (%s) at ' + \
+                        'offset 0x%08x' % (len(skipped), descr, offset - len(skipped))
+                skipped = []
+            offset += len(ops[offset])
+
+    return ops
+
 
 def get_bindata(data, offset, ops, labels, max_len = 16):
     "Get a chunk of at most max_len bytes, not crossing any section boundaries"
@@ -165,209 +205,178 @@ def get_bindata(data, offset, ops, labels, max_len = 16):
         end += 1
     return end
 
-
-# Read data
-if len(sys.argv) > 1:
-    data = file(sys.argv[1], 'rb').read()
-else:
-    data = sys.stdin.read()
-
-assert len(data) >= 256
-assert len(data)%256 == 0
-
-# Parse header
-header = Header()
-header.unpack(data)
-
-# Verify checksum
-assert header.magic == MAGIC
-assert header.verify_checksum(data)
-
-# Set header parameters
-print 'version(%d,%d,%d)' % (header.version >> 16, (header.version>>8)&0xff, header.version&0xff)
-print 'stack_size(0x%08x)' % header.stack_size
-
-# Try to decode data
-ops = [None]*len(data)
-offset = len(header)
-skipped = []
-while offset < header.extstart:
-
-    if ops[offset] is None:
-        decode_function(data, offset, ops)
-
-    if ops[offset] is None:
-        skipped.append(unpack(data, offset, 1))
-        offset += 1
+if __name__ == '__main__':
+    # Read data
+    if len(sys.argv) > 1:
+        data = file(sys.argv[1], 'rb').read()
     else:
-        if skipped:
-            # Warn if we may have skipped important data:
-            if skipped.count(0) < len(skipped) and offset - len(skipped) != len(header):
-                descr = ' '.join([ '%02x'%i for i in skipped[:10]])
-                if len(skipped) > 10: descr += '..'
-                print >>sys.stderr, 'Warning: skipped %d bytes (%s) at offset 0x%08x' \
-                    % (len(skipped), descr, offset - len(skipped))
-            skipped = []
-        offset += len(ops[offset])
+        data = sys.stdin.read()
 
-    decoded = None
+    ops = disassemble(data)
+    header = ops[0]
+    assert header is not None
 
-# Scan for label positions and labels
-can_label = set()
-has_label = set()
-offset = len(header)
-while offset < header.extstart:
-    can_label.add(offset)
-    op = ops[offset]
-    if op is None:
-        offset += 1
-    else:
-        target = op.target()
-        if target is not None:
-            has_label.add(target)
-        if hasattr(op, 'operands') and hasattr(op, 'parameters'):
-            for (t,o) in zip(op.parameters, op.operands):
-                if o.is_mem_ref():
-                    has_label.add(o.value())
-                if o.is_ram_ref():
-                    has_label.add(header.ramstart + o.value())
-                if o.is_immediate() and t == 'm':
-                    has_label.add(o.value())
-        offset += len(op)
+    # Scan for label positions and labels
+    can_label = set()
+    has_label = set()
+    offset = len(header)
+    while offset < header.extstart:
+        can_label.add(offset)
+        op = ops[offset]
+        if op is None:
+            offset += 1
+        else:
+            target = op.target()
+            if target is not None:
+                has_label.add(target)
+            if hasattr(op, 'operands') and hasattr(op, 'parameters'):
+                for (t,o) in zip(op.parameters, op.operands):
+                    if o.is_mem_ref():
+                        has_label.add(o.value())
+                    if o.is_ram_ref():
+                        has_label.add(header.ramstart + o.value())
+                    if o.is_immediate() and t == 'm':
+                        has_label.add(o.value())
+            offset += len(op)
 
-# Find valid label positions and names:
-labels = {}
-for a in sorted(has_label.intersection(can_label)):
-    labels[a] = [ 'l%d' % (len(labels) + 1) ]
-del can_label
-del has_label
+    # Find valid label positions and names:
+    labels = {}
+    for a in sorted(has_label.intersection(can_label)):
+        labels[a] = [ 'l%d' % (len(labels) + 1) ]
+    del can_label
+    del has_label
 
-# Add fixed section markers:
-sections = [
-    (len(header),           'romstart'),
-    (header.start_func,     'start_func'),
-    (header.decoding_tbl,   'decoding_tbl'),
-    (header.ramstart,       'ramstart'),
-    (header.extstart,       'extstart') ]
+    # Add fixed section markers:
+    sections = [
+        (len(header),           'romstart'),
+        (header.start_func,     'start_func'),
+        (header.decoding_tbl,   'decoding_tbl'),
+        (header.ramstart,       'ramstart'),
+        (header.extstart,       'extstart') ]
 
-for offset, label in sections:
-    if offset not in labels:
-        labels[offset] = []
-    labels[offset].append(label)
+    for offset, label in sections:
+        if offset not in labels:
+            labels[offset] = []
+        labels[offset].append(label)
 
-# Print memory (ROM/RAM) contents (not including the header)
-offset = len(header)
-while True:
+    # Print header parameters
+    print 'version(%d,%d,%d)' % (
+        header.version >> 16, (header.version>>8)&0xff, header.version&0xff )
+    print 'stack_size(0x%08x)' % header.stack_size
 
-    if offset in labels:
-        for label in labels[offset]:
-            print 'label("%s")  # %08x' % (label, offset)
+    # Print memory (ROM/RAM) contents (not including the header)
+    offset = len(header)
+    while True:
 
-    if offset == header.extstart:
-        break
+        if offset in labels:
+            for label in labels[offset]:
+                print 'label("%s")  # %08x' % (label, offset)
 
-    op = ops[offset]
-    if op is None:
-        # Print a chunk of at most 16 bytes, not crossing any section boundaries
-        end = get_bindata(data, offset, ops, labels)
-        values = [ unpack(data, i, 1) for i in range(offset, end) ]
-        descr = ''
-        for v in values:
-            if is_ascii(v): descr += chr(v)
-            else:           descr += '.'
-        print '\tdb(%s)  # %s  %08x' % ( ','.join(['%3d'%v for v in values]),
-                                         descr, offset)
-        offset = end
-    else:
-        # Print decoded operations:
-        if isinstance(op, Instr):
-            args = []
-            for i in range(len(op.operands)):
-                o = op.operands[i]
-                t = op.parameters[i]
-                v = o.value()
+        if offset == header.extstart:
+            break
 
-                if o.is_immediate():
+        op = ops[offset]
+        if op is None:
+            # Print a chunk of at most 16 bytes, not crossing any section boundaries
+            end = get_bindata(data, offset, ops, labels)
+            values = [ unpack(data, i, 1) for i in range(offset, end) ]
+            descr = ''
+            for v in values:
+                if is_ascii(v): descr += chr(v)
+                else:           descr += '.'
+            print '\tdb(%s)  # %s  %08x' % ( ','.join(['%3d'%v for v in values]),
+                                            descr, offset)
+            offset = end
+        else:
+            # Print decoded operations:
+            if isinstance(op, Instr):
+                args = []
+                for i in range(len(op.operands)):
+                    o = op.operands[i]
+                    t = op.parameters[i]
+                    v = o.value()
 
-                    # HACK: convert relative branch target to absolute address
-                    w = v + op.offset() + len(op) - 2
+                    if o.is_immediate():
 
-                    if t == 'b' and w in labels:
-                        if o.is_canonical and False: # TEMP
-                            args.append('lb("%s")'%labels[w][0])
+                        # HACK: convert relative branch target to absolute address
+                        w = v + op.offset() + len(op) - 2
+
+                        if t == 'b' and w in labels:
+                            if o.is_canonical and False: # TEMP
+                                args.append('lb("%s")'%labels[w][0])
+                            else:
+                                args.append('lb("%s", %d)'%(labels[w][0], len(o)))
+                        elif t in ('a', 'f') and v in labels:
+                            if o.is_canonical and False: # TEMP
+                                args.append('la("%s")'%labels[v][0])
+                            else:
+                                args.append('la("%s", %d)'%(labels[v][0], len(o)))
+                        elif t == 'm' and v in labels:
+                            if o.is_canonical and False: # Temp
+                                args.append('limm("%s")'%labels[v][0])
+                            else:
+                                args.append('limm("%s", %d)'%(labels[v][0], len(o)))
+                        elif o.is_canonical():
+                            args.append('%d'%v)
                         else:
-                            args.append('lb("%s", %d)'%(labels[w][0], len(o)))
-                    elif t in ('a', 'f') and v in labels:
-                        if o.is_canonical and False: # TEMP
-                            args.append('la("%s")'%labels[v][0])
+                            args.append('imm(%d,%d)'%(v, len(o)))
+
+                    elif o.is_mem_ref():
+
+                        if v in labels:
+                            if o.is_canonical and False: # TEMP
+                                args.append('lmem("%s")'%labels[v][0])
+                            else:
+                                args.append('lmem("%s", %d)'%(labels[v][0], len(o)))
+                        elif o.is_canonical():
+                            args.append('mem(%d)'%v)
                         else:
-                            args.append('la("%s", %d)'%(labels[v][0], len(o)))
-                    elif t == 'm' and v in labels:
-                        if o.is_canonical and False: # Temp
-                            args.append('limm("%s")'%labels[v][0])
+                            args.append('mem(%d,%d)'%(v, len(o)))
+
+                    elif o.is_ram_ref():
+
+                        # convert ram-relative address to absolute address
+                        w = v + header.ramstart
+
+                        if w in labels:
+                            if o.is_canonical and False: # TEMP
+                                args.append('lram("%s")'%labels[w][0])
+                            else:
+                                args.append('lram("%s", %d)'%(labels[w][0], len(o)))
+                        elif o.is_canonical():
+                            args.append('ram(%d)'%v)
                         else:
-                            args.append('limm("%s", %d)'%(labels[v][0], len(o)))
-                    elif o.is_canonical():
-                        args.append('%d'%v)
+                            args.append('ram(%d,%d)'%(v, len(o)))
+
+                    elif o.is_local_ref():
+                        if o.is_canonical():
+                            args.append('loc(%d)'%v)
+                        else:
+                            args.append('loc(%d,%d)'%(v, len(o)))
+                    elif o.is_stack_ref():
+                        args.append('stk()')
                     else:
-                        args.append('imm(%d,%d)'%(v, len(o)))
+                        print o.mode, o.value
+                        assert 0
+                print '\t%s(%s)  # %08x' % (op.mnemonic, ', '.join(args), offset)
 
-                elif o.is_mem_ref():
+            elif isinstance(op, Func):
+                print ''
+                print '# Function at offset %08x (code starts at %08x)' % \
+                    (offset, offset + len(op))
+                # TODO: print memory map of locals here?
+                if op.stack_args():     f = 'func_stack'
+                elif op.local_args():   f = 'func_local'
+                else:                   assert 0
+                pieces = map(lambda x: '(%d,%d)' % x, op.locals)
+                print '\t%s(%s)'%(f,', '.join(pieces))
 
-                    if v in labels:
-                        if o.is_canonical and False: # TEMP
-                            args.append('lmem("%s")'%labels[v][0])
-                        else:
-                            args.append('lmem("%s", %d)'%(labels[v][0], len(o)))
-                    elif o.is_canonical():
-                        args.append('mem(%d)'%v)
-                    else:
-                        args.append('mem(%d,%d)'%(v, len(o)))
+            offset += len(op)
 
-                elif o.is_ram_ref():
+        if offset == header.ramstart or offset == header.extstart:
+            print 'pad(256)'
 
-                    # convert ram-relative address to absolute address
-                    w = v + header.ramstart
-
-                    if w in labels:
-                        if o.is_canonical and False: # TEMP
-                            args.append('lram("%s")'%labels[w][0])
-                        else:
-                            args.append('lram("%s", %d)'%(labels[w][0], len(o)))
-                    elif o.is_canonical():
-                        args.append('ram(%d)'%v)
-                    else:
-                        args.append('ram(%d,%d)'%(v, len(o)))
-
-                elif o.is_local_ref():
-                    if o.is_canonical():
-                        args.append('loc(%d)'%v)
-                    else:
-                        args.append('loc(%d,%d)'%(v, len(o)))
-                elif o.is_stack_ref():
-                    args.append('stk()')
-                else:
-                    print o.mode, o.value
-                    assert 0
-            print '\t%s(%s)  # %08x' % (op.mnemonic, ', '.join(args), offset)
-
-        elif isinstance(op, Func):
-            print ''
-            print '# Function at offset %08x (code starts at %08x)' % \
-                  (offset, offset + len(op))
-            # TODO: print memory map of locals here?
-            if op.stack_args():     f = 'func_stack'
-            elif op.local_args():   f = 'func_local'
-            else:                   assert 0
-            pieces = map(lambda x: '(%d,%d)' % x, op.locals)
-            print '\t%s(%s)'%(f,', '.join(pieces))
-
-        offset += len(op)
-
-    if offset == header.ramstart or offset == header.extstart:
-        print 'pad(256)'
-
-print 'fill(%d)' % (header.endmem - header.extstart)
-print 'pad(256)'
-print 'label("endmem")'
-print 'eof()'
+    print 'fill(%d)' % (header.endmem - header.extstart)
+    print 'pad(256)'
+    print 'label("endmem")'
+    print 'eof()'
