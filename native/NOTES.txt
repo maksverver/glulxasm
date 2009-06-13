@@ -1,2 +1,6 @@
 Contains some code (glkop.c) from Glulxle written by Andrew Plotkin.
-See also: http://eblong.com/zarf/glulx/index.html 
+See also: http://eblong.com/zarf/glulx/index.html
+
+Major missing features:
+ - saving/loading of game state in files
+ - saving/loading of state for undoing

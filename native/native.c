@@ -62,7 +62,7 @@ static INLINE bool check_search_params(
     const uint32_t end_mem = native_getmemsize();
 
     if (key_offset > struct_size || struct_size - key_offset < key_size ||
-        (key_indirect && (key > end_mem || end_mem - key > key_size)))
+        (key_indirect && (key > end_mem || end_mem - key < key_size)))
     {
         return false;
     }
@@ -262,10 +262,11 @@ uint32_t native_getstringtbl()
 
 uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
 {
-    uint32_t args[32], n;
+    uint32_t n, *args;
 
-    assert(narg <= 32);
-
+    /* Copy arguments from stack to temporary buffer.
+       (This is necessary since Glk may pop/push data on the stack too. */
+    args = alloca(sizeof(narg)*sizeof(uint32_t));
     for (n = 0; n < narg; ++n)
         args[n] = *--*sp;
 
@@ -287,8 +288,7 @@ void native_mfree(uint32_t a1)
 
 void native_quit()
 {
-    printf("native_quit()");
-    exit(0);
+    glk_exit();
 }
 
 int32_t native_random(int32_t a1)
@@ -380,7 +380,7 @@ static void build_string_table(uint32_t offset, uint32_t value, int bits_used)
         /* branch node */
         build_string_table(get_long(offset + 1), value, bits_used + 1);
         value |= 1<<bits_used;
-        build_string_table(get_long(offset + 1), value, bits_used + 1);
+        build_string_table(get_long(offset + 5), value, bits_used + 1);
     }
     else
     {
@@ -480,10 +480,8 @@ static void stream_compressed_string(uint32_t offset)
         {
             struct StringTableEntry *entry = &strtbl[value&mask];
             uint32_t node_offset = entry->node_offset;
-            printf("a: bits=%d value=%08x bits_used=%d\n", bits, value, entry->bits_used);
             bits  -= entry->bits_used;
             value >>= entry->bits_used;
-            printf("b: bits=%d value=%08x bits_used=%d\n", bits, value, entry->bits_used);
 
             switch (get_byte(node_offset))
             {

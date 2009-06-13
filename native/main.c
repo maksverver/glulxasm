@@ -65,5 +65,5 @@ void glk_main()
 
     stack[0] = 0;
     func(init_start_func)(&stack[0]);
-    glk_exit();
+    native_quit();
 }
