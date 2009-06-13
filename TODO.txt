@@ -1,2 +1,25 @@
 glxd:
- - decode encoded strings, so they can be emitted as functions
+ - decode encoded strings, so they can be emitted as functions?
+
+glulx-to-c/native:
+ - get everything to work!
+
+native:
+ - support for decoding strings with Huffman table
+
+
+Later optimizations in C code generation:
+ - convert use of stack to use of local variables
+   e.g.
+    copy 6, stk()
+    copy 7, stk()
+    call(2, stk(), stk())
+   becomes
+    int x = 6;
+    int y = 7;
+    call(2, x, y);
+   this should at least avoid a lot of writes to the (global) stack
+ - alternatively, make stack local (with alloca)?
+   (need to test if the compiler is then able to elide writes)
+ - resolve constant function addresses at compile-time
+   (need to test if this isn't done already with the current func_map)

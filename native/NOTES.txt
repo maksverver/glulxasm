@@ -1,0 +1,2 @@
+Contains some code (glkop.c) from Glulxle written by Andrew Plotkin.
+See also: http://eblong.com/zarf/glulx/index.html 

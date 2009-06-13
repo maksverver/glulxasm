@@ -423,7 +423,7 @@ class RamRefOperand(OperandBase):
         self.update()
 
 class Func(Op):
-    def __init__(self, type, locals):
+    def __init__(self, type, locals, offset = 0):
         self.type   = type
         self.locals = locals
         data = pack(self.type, 1)
@@ -431,7 +431,7 @@ class Func(Op):
             data += pack(size, 1)
             data += pack(count, 1)
         data += pack(0, 2)
-        Op.__init__(self, data)
+        Op.__init__(self, data, offset)
 
     def stack_args(self):
         return self.type == 0xc0

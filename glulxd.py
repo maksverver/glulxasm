@@ -11,6 +11,7 @@ def decode_function_header(data, offset):
     '''Tries to decode a function header in data starting from offset. Returns
        a tuple of function type and a list of localtype/localcount values
        or None.'''
+    start = offset
     if offset >= 0 and offset < len(data):
         type = ord(data[offset])
         if type == 0xc0 or type == 0xc1:
@@ -21,7 +22,7 @@ def decode_function_header(data, offset):
                 localcount = unpack(data, offset + 1, 1)
                 offset += 2
                 if localtype == 0 and localcount == 0:  # end of header
-                    return Func(type, locals)
+                    return Func(type, locals, start)
                 if localtype not in (1,2,4) or localcount == 0:  # invalid
                     return None
                 locals.append((localtype, localcount))
