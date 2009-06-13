@@ -121,6 +121,8 @@ def main(path = None):
         branch_targets = set([i.branch_target() for i in instrs])
         branch_targets.remove(None)
 
+        label_ret = [ False, False ]  # return 0/1 labels
+
         for instr in instrs:
             (param, sizes, code) = opcode_map[instr.mnemonic]
             assert len(param) == len(sizes) == len(instr.operands)
@@ -130,59 +132,69 @@ def main(path = None):
                 print '\t{ /* %08x */' % instr.offset()
 
             ids = range(1, len(param) + 1)
+            num_load = num_store = 0
             for n,o,p,s in zip(ids, instr.operands, param, sizes):
 
                 if p == 'b':  # label target
-                    assert s == '-'
-                    print '\t\t#define a%d l%08x' % (n, instr.branch_target())
+                    assert s == 'x'
+                    target = instr.branch_target()
+                    if target is not None:
+                        print '\t\t#define b1 l%08x' % (target)
+                    else:
+                        target = instr.return_value()
+                        print '\t\t#define b1 l%d' % (target)
+                        label_ret[target] = True
 
                 elif p == 'l':  # loaded argument
+                    num_load += 1
                     t = uint_type(s)
                     htonx = hton_type(s)
 
                     if o.is_immediate():
-                        print '\t\t%s a%d = %d;' % (t, n, o.value())
+                        print '\t\t%s l%d = %d;' % (t, num_load, o.value())
                     elif o.is_mem_ref():
-                        print '\t\t%s a%d = %s(*(%s*)&mem[%d]);' % \
-                            (t, n, ntoh_type(s), t, o.value())
+                        print '\t\t%s l%d = %s(*(%s*)&mem[%d]);' % \
+                            (t, num_load, ntoh_type(s), t, o.value())
                     elif o.is_ram_ref():
-                        print '\t\t%s a%d = %s(*(%s*)&mem[%d + RAMSTART]);' % \
-                            (t, n, ntoh_type(s), t, o.value())
+                        print '\t\t%s l%d = %s(*(%s*)&mem[%d + RAMSTART]);' % \
+                            (t, num_load, ntoh_type(s), t, o.value())
                     elif o.is_local_ref():
                         assert o.value()%4 == 0
-                        print '\t\t%s a%d = local%d' % \
-                            (t, n, t, o.value()/4)
+                        print '\t\t%s l%d = loc%d;' % (t, num_load, o.value()/4)
                     elif o.is_stack_ref():
-                        print '\t\t%s a%d = (%s)*--sp' % (t, n, t)
+                        print '\t\t%s l%d = (%s)*--sp;' % (t, num_load, t)
                     else:
                         assert 0
 
                 elif p == 's':  # stored argument
-                    print '\t\t%s a%d;' % (uint_type(s), n)
+                    num_store += 1
+                    print '\t\t%s s%d;' % (uint_type(s), num_store)
 
                 else:
                     assert 0
 
             print '\t\t'+code
 
+            num_load = num_store = 0
             for n,o,p,s in zip(ids, instr.operands, param, sizes):
                 if p == 'l':
                     pass
                 elif p == 'b':  # branch argument
-                    print '\t\t#undef a%d'%(n,)
+                    print '\t\t#undef b1'
                 elif p == 's':  # stored argument
+                    num_store += 1
                     if o.is_immediate():
                         assert o.value() == 0
                     elif o.is_mem_ref():
-                        print '\t\t*(%s*)&mem[%d] = %s(a%d);' % \
-                            (t, o.value(), hton_type(s), n)
+                        print '\t\t*(%s*)&mem[%d] = %s(s%d);' % \
+                            (t, o.value(), hton_type(s), num_store)
                     elif o.is_ram_ref():
-                        print '\t\t*(%s*)&mem[%d + RAMSTART] = %s(a%d);' % \
-                            (t, o.value(), hton_type(s), n)
+                        print '\t\t*(%s*)&mem[%d + RAMSTART] = %s(s%d);' % \
+                            (t, o.value(), hton_type(s), num_store)
                     elif o.is_local_ref():
-                        print '\t\tlocal%d = a%d;' % (o.value()/4, n)
+                        print '\t\tloc%d = s%d;' % (o.value()/4, num_store)
                     elif o.is_stack_ref():
-                        print '\t\t*sp++ = a%d;' % (n,)
+                        print '\t\t*sp++ = s%d;' % (num_store,)
                     else:
                         assert 0
                 else:
@@ -190,7 +202,13 @@ def main(path = None):
 
             print '\t}'
 
-        print '\treturn 0;'
+        if label_ret[0]:
+            print 'l0:\treturn 0;'
+        else:
+            print '\treturn 0;'
+        if label_ret[1]:
+            print 'l1:\treturn 1;'
+
         print '}\n'
 
 if __name__ == '__main__': main(*sys.argv[1:])

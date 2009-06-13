@@ -2,11 +2,14 @@ glxd:
  - decode encoded strings, so they can be emitted as functions?
 
 glulx-to-c/native:
- - get everything to work!
+
+opcode-map:
+ - add code for missing opcodes
 
 native:
+ - support for true binary search
  - support for decoding strings with Huffman table
-
+ - maybe later: support for native accellerated functions?
 
 Later optimizations in C code generation:
  - convert use of stack to use of local variables

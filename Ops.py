@@ -215,6 +215,14 @@ class Instr(Op):
     def is_call(self):
         return self.parameters.find('f') >= 0
 
+    def return_value(self):
+        # NOTE: currently only works for branches
+        i = self.parameters.find('b')
+        if i >= 0:
+            oper = self.operands[i]
+            if oper.is_immediate() and oper.value() in (0, 1):
+                return oper.value()
+
     def branch_target(self):
 
         # Recognize (relative) branch targets
