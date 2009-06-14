@@ -22,22 +22,31 @@ def read_opcode_map():
 def func_name(f):
     return 'func%08x' % f.offset()
 
-def uint_type(size):
-    if int(size) == 1: return 'uint8_t'
-    if int(size) == 2: return 'uint16_t'
-    if int(size) == 4: return 'uint32_t'
+def int_type(size):
+    if size == 'B': return 'uint8_t'
+    if size == 'S': return 'uint16_t'
+    if size == 'L': return 'uint32_t'
+    if size == 'b': return 'int8_t'
+    if size == 's': return 'int16_t'
+    if size == 'l': return 'int32_t'
     assert 0
 
 def hton_type(size):
-    if int(size) == 1: return ''
-    if int(size) == 2: return 'htons'
-    if int(size) == 4: return 'htonl'
+    if size == 'B': return ''
+    if size == 'S': return 'htons'
+    if size == 'L': return 'htonl'
+    if size == 'b': return ''
+    if size == 's': return '(int16_t)htons'
+    if size == 'l': return '(int32_t)htonl'
     assert 0
 
 def ntoh_type(size):
-    if int(size) == 1: return ''
-    if int(size) == 2: return 'ntohs'
-    if int(size) == 4: return 'ntohl'
+    if size == 'B': return ''
+    if size == 'S': return 'ntohs'
+    if size == 'L': return 'ntohl'
+    if size == 'b': return ''
+    if size == 's': return '(int16_t)ntohs'
+    if size == 'l': return '(int32_t)ntohl'
     assert 0
 
 def main(path = None):
@@ -77,7 +86,7 @@ def main(path = None):
     print 'const uint32_t init_ramstart     = RAMSTART;'
     print 'const uint32_t init_extstart     = EXTSTART;'
     print 'const uint32_t init_endmem       = ENDMEM;'
-    print 'const uint32_t init_stack_size   = RAMSTART;'
+    print 'const uint32_t init_stack_size   = STACK_SIZE;'
     print 'const uint32_t init_start_func   = START_FUNC;'
     print 'const uint32_t init_decoding_tbl = DECODING_TBL;'
     print 'const uint32_t init_checksum     = CHECKSUM;'
@@ -107,10 +116,12 @@ def main(path = None):
 
         nlocal = sum([ count for size,count in f.locals ])
         if f.type == 0xc0:  # stack args
+            print '\tuint32_t * const bp = sp - *sp;'
             for n in range(nlocal):
                 print '\tuint32_t loc%d = 0;' % n
             print '\t++sp;'
         elif f.type == 0xc1:  # local args
+            print '\tuint32_t * const bp = sp;'
             if nlocal > 0:
                 print '\tuint32_t narg = *sp;'
                 for n in range(nlocal):
@@ -144,7 +155,7 @@ def main(path = None):
 
                 elif p == 'l':  # loaded argument
                     num_load += 1
-                    t = uint_type(s)
+                    t = int_type(s)
                     htonx = hton_type(s)
 
                     if o.is_immediate():
@@ -165,7 +176,7 @@ def main(path = None):
 
                 elif p == 's':  # stored argument
                     num_store += 1
-                    print '\t\t%s s%d;' % (uint_type(s), num_store)
+                    print '\t\t%s s%d;' % (int_type(s), num_store)
 
                 else:
                     assert 0

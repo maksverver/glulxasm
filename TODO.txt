@@ -5,15 +5,18 @@ glxd:
    decode faster than the player can read!)
 
 glulx-to-c:
+    - support for blorb file
 
 native:
+    - respect current iosystem setting
+    - support for blorb file instead of ulx (link this into file)
 
 glulx-to-llvm:
     - write this! could be interesting.
 
 
 opcode-map:
- - add code for missing opcodes
+    - now complete (though not all opcodes are implemented in a meaningful way)
 
 native:
  - support for blorb

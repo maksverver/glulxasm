@@ -17,8 +17,13 @@ extern glui32 *make_temp_ustring(glui32 addr);
 extern void free_temp_string(char *str);
 extern void free_temp_ustring(glui32 *str);
 
-static uint32_t cur_iosys = 0;
-static uint32_t cur_decoding_tbl = 0;
+static uint32_t cur_iosys_mode      = 0;
+static uint32_t cur_iosys_rock      = 0;
+static uint32_t cur_decoding_tbl    = 0;
+static uint32_t cur_protect_offset  = 0;
+static uint32_t cur_protect_size    = 0;
+static uint32_t cur_rng_base        = 0;
+static uint32_t cur_rng_carry       = 0;
 
 /* The string table is encoded in the story file as a Huffman tree. When it
    is loaded, it is converted to a look-up table of size 2**H, where H is the
@@ -215,6 +220,12 @@ uint32_t native_linkedsearch(
     return 0;
 }
 
+void native_debugtrap(uint32_t argument)
+{
+    (void)argument;
+    abort();
+}
+
 uint32_t native_gestalt(uint32_t selector, uint32_t argument)
 {
     /* Note that most of these check for support of opcodes, not necessarily
@@ -270,6 +281,12 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
     }
 }
 
+void native_getiosys(uint32_t *mode, uint32_t *rock)
+{
+    *mode = cur_iosys_mode;
+    *rock = cur_iosys_rock;
+}
+
 uint32_t native_getmemsize()
 {
     return init_endmem;
@@ -297,17 +314,23 @@ uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
     return res;
 }
 
-uint32_t native_malloc(uint32_t l1)
+uint32_t native_malloc(uint32_t size)
 {
     /* not implemented */
-    (void)l1;
+    (void)size;
     return 0;
 }
 
-void native_mfree(uint32_t l1)
+void native_mfree(uint32_t offset)
 {
     /* not implemented */
-    (void)l1;
+    (void)offset;
+}
+
+void native_protect(uint32_t offset, uint32_t size)
+{
+    cur_protect_offset = offset;
+    cur_protect_size   = size;
 }
 
 void native_quit()
@@ -315,23 +338,26 @@ void native_quit()
     glk_exit();
 }
 
-int32_t native_random(int32_t l1)
+static INLINE uint32_t rng_next()
 {
-    /* Dirty, but works well: */
-    assert(RAND_MAX >= 256);
-    uint32_t roll = random();
-    roll ^= random() <<  8;
-    roll ^= random() << 16;
-    roll ^= random() << 24;
+    uint64_t tmp = 1554115554ull*cur_rng_base + cur_rng_carry;
+    cur_rng_base  = tmp;
+    cur_rng_carry = tmp >> 32;
+    return cur_rng_base;
+}
 
-    if (l1 > 0)
-        return (int32_t)(roll%l1);
+int32_t native_random(int32_t range)
+{
+    uint32_t roll = rng_next();
+    if (range > 0) return +(int32_t)(roll%(uint32_t)+range);
+    if (range < 0) return -(int32_t)(roll%(uint32_t)-range);
+    return roll;
+}
 
-    if ((uint32_t)l1 == 0x80000000)
-        return (int32_t)(roll|0x80000000u);
-
-    if (l1 < 0)
-        return -(int32_t)(roll%-l1);
+void native_reset_memory(const uint8_t *storydata)
+{
+    memcpy(mem, storydata, init_extstart);
+    memset(mem + init_extstart, 0, init_endmem - init_extstart);
 }
 
 void native_restart()
@@ -339,10 +365,10 @@ void native_restart()
     printf("native_restart()");
 }
 
-uint32_t native_restore(uint32_t l1)
+uint32_t native_restore(uint32_t stream)
 {
     /* not implemented */
-    (void)l1;
+    (void)stream;
     return 1; /* indicates failure! */
 }
 
@@ -352,10 +378,10 @@ uint32_t native_restoreundo()
     return 1; /* indicates failure! */
 }
 
-uint32_t native_save(uint32_t l1)
+uint32_t native_save(uint32_t stream)
 {
     /* not implemented */
-    (void)l1;
+    (void)stream;
     return 1; /* indicates failure! */
 }
 
@@ -365,25 +391,36 @@ uint32_t native_saveundo()
     return 1; /* indicates failure! */
 }
 
-void native_setiosys(uint32_t l1, uint32_t l2)
+uint32_t native_setmemsize(uint32_t new_size)
 {
-    switch (l1)
+    /* not implemented */
+    (void)new_size;
+    return 1; /* indicates failure! */
+}
+
+void native_setiosys(uint32_t mode, uint32_t rock)
+{
+    switch (mode)
     {
-    case 0:
+    case 0:  /* null iosys */
     default:
-        cur_iosys = 0;  /* null iosys */
+        cur_iosys_mode = 0;
+        cur_iosys_rock = rock;
         break;
 
-    case 2:
-        (void)l2;  /* filtering not implemented yet */
-        cur_iosys = 2;
+    /* NB. case 1 missing because filter is not implemented */
+
+    case 2: /* Glk */
+        cur_iosys_mode = 2;
+        cur_iosys_rock = rock;
         break;
     }
 }
 
-void native_setrandom(uint32_t l1)
+void native_setrandom(uint32_t seed)
 {
-    srandom(time(NULL));
+    cur_rng_base  = (seed != 0) ? seed : time(NULL);
+    cur_rng_carry = 0;
 }
 
 static int get_tree_height(uint32_t offset)
@@ -518,7 +555,7 @@ static void stream_compressed_string(uint32_t offset)
                 glk_put_string((char*)&mem[node_offset + 1]);
                 break;
 
-            /* TODO: other string types */
+            /* TODO: other node types? */
 
             default:  /* unknown node type */
                 assert(0);
@@ -554,6 +591,11 @@ void native_streamstr(uint32_t offset)
     default:
         assert(0);
     }
+}
+
+void native_streamunichar(uint32_t ch)
+{
+    glk_put_char_uni(ch);
 }
 
 uint32_t native_verify()

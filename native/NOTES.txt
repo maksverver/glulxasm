@@ -1,8 +1,10 @@
-Contains some code (glkop.c) from Glulxle written by Andrew Plotkin.
-See also: http://eblong.com/zarf/glulx/index.html
+Contains some code from Glulxle (glkop.c) and Glk (gi_blorb.c) written by
+Andrew Plotkin. See: http://eblong.com/zarf/{glulx,glk}/
+
+-- 
 
 Major missing features:
- - load blorb at startup
+ - should load blorb at startup (for resources too)
  - saving/loading of game state in files
  - saving/loading of state for undoing
 
@@ -12,3 +14,13 @@ To figure out:
     dynamic library containing native interpreter code
     dynamic library containing storyfile
     blorb file containing storyfile
+
+
+Accelerated functions:
+    8.7483%  func000939d4 (accel_func 1)
+    7.1549%  func00093ace (accel_func 2)
+    8.5797%  func00093179 (accel_func 3)
+    1.3712%  func000931fd (accel_func 4)
+    4.3512%  func000932ea (accel_func 5)
+    2.7118%  func00092efb (accel_func 6)
+    2.8420%  func00093287 (accel_func 7)
