@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 
 #ifndef INLINE
 #define INLINE inline
@@ -34,34 +35,30 @@ static struct StringTableEntry
     uint32_t node_offset;
 } *strtbl = NULL;
 
-uint32_t *glk_stack_ptr = NULL;
+uint32_t **glk_stack_ptr = NULL;
 
-#define get_byte(a) (*(uint8_t*)&mem[a])
-#define get_shrt(a) (ntohs(*(uint16_t*)&mem[a]))
-#define get_long(a) (ntohl(*(uint32_t*)&mem[a]))
-
-void native_accelfunc(uint32_t a1, uint32_t a2)
+void native_accelfunc(uint32_t l1, uint32_t l2)
 {
     /* not implemented */
-    (void)a1;
-    (void)a2;
+    (void)l1;
+    (void)l2;
 }
 
-void native_accelparam(uint32_t a1, uint32_t a2)
+void native_accelparam(uint32_t l1, uint32_t l2)
 {
     /* not implemented */
-    (void)a1;
-    (void)a2;
+    (void)l1;
+    (void)l2;
 }
 
 static INLINE bool check_search_params(
     uint32_t key, uint32_t key_size, uint32_t start,
-    uint32_t struct_size, uint32_t num_structs, uint32_t key_offset,
+    uint32_t struct_size, uint32_t num_structs, uint32_t key_off,
     bool key_indirect, uint32_t *end )
 {
     const uint32_t end_mem = native_getmemsize();
 
-    if (key_offset > struct_size || struct_size - key_offset < key_size ||
+    if (key_off > struct_size || struct_size - key_off < key_size ||
         (key_indirect && (key > end_mem || end_mem - key < key_size)))
     {
         return false;
@@ -80,24 +77,28 @@ static INLINE bool zero_key(uint32_t offset, uint32_t size)
     return true;
 }
 
-
 static INLINE int compare_key(
-    uint32_t key, uint32_t key_size, uint32_t offset,
-    uint32_t key_offset, bool key_indirect )
+    uint32_t key, uint32_t key_size, bool key_indirect, uint32_t offset )
 {
     if (key_indirect)
     {
-        return memcmp(&mem[key], &mem[offset + key_offset], key_size);
+        uint32_t n;
+        for (n = 0; n < key_size; ++n)
+        {
+            if (mem[key + n] != mem[offset + n])
+                return (mem[key + n] < mem[offset + n]) ? -1 : +1;
+        }
+        return 0;
     }
     else  /* key direct */
     {
         uint32_t val;
         switch (key_size)
         {
-        case 1: val = get_byte(offset + key_offset); break;
-        case 2: val = get_shrt(offset + key_offset); break;
-        case 4: val = get_long(offset + key_offset); break;
-        default: return -1;
+        case 1: val = get_byte(offset); break;
+        case 2: val = get_shrt(offset); break;
+        case 4: val = get_long(offset); break;
+        default: assert(0);
         }
         if (key < val) return -1;
         if (key > val) return +1;
@@ -118,7 +119,7 @@ static INLINE uint32_t search_success(
 
 uint32_t native_linearsearch(
     uint32_t key, uint32_t key_size, uint32_t start, uint32_t struct_size,
-    uint32_t num_structs, uint32_t key_offset, uint32_t options )
+    uint32_t num_structs, uint32_t key_off, uint32_t options )
 {
     const bool key_indirect        = options&0x01;
     const bool zero_key_terminates = options&0x02;
@@ -127,7 +128,7 @@ uint32_t native_linearsearch(
 
     if (!check_search_params( key, key_size, start,
                               struct_size, num_structs,
-                              key_offset, key_indirect, &end ) )
+                              key_off, key_indirect, &end ) )
     {
         return search_failure(return_index);
     }
@@ -135,7 +136,7 @@ uint32_t native_linearsearch(
     /* Linear search */
     for (offset = start; offset < end; offset += struct_size)
     {
-        if (compare_key(key, key_size, offset, key_offset, key_indirect) == 0)
+        if (compare_key(key, key_size, key_indirect, offset + key_off) == 0)
             break;
         if (zero_key_terminates && zero_key(offset, key_size))
             break;
@@ -147,48 +148,67 @@ uint32_t native_linearsearch(
 
 uint32_t native_binarysearch(
     uint32_t key, uint32_t key_size, uint32_t start, uint32_t struct_size,
-    uint32_t num_structs, uint32_t key_offset, uint32_t options )
+    uint32_t num_structs, uint32_t key_off, uint32_t options )
 {
     const bool key_indirect        = options&0x01;
     const bool zero_key_terminates = options&0x02;
     const bool return_index        = options&0x04;
-    uint32_t end;
+    uint32_t lo = 0, hi = num_structs;
 
-    /* The Glulxe standard isn't clear on what this options does for binary
-       searches; I choose to ignore it entirely. */
+    /* printf("binary search (key=0x%08x, key_size=%d, start=0x%08x, "
+           "struct_size=%d, num_structs=%d, key_off=%d, options=%d)\n",
+           key, key_size, start, struct_size, num_structs, key_off, options); */
+
+    /* The Glulxe standard isn't clear on how the zero_key_terminates options
+       works for binary search, so disallow it for the moment:*/
+    /* assert(!zero_key_terminates); */
     (void)zero_key_terminates;
 
-    if (!check_search_params( key, key_size, start, struct_size, num_structs,
-                              key_offset, key_indirect, &end ) )
-    {
-        return search_failure(return_index);
+    #define binsearch_direct(type,get_type)                                    \
+    {                                                                          \
+        type a = key_indirect ? get_type(key) : (type)key;                     \
+        while (lo < hi)                                                        \
+        {                                                                      \
+            uint32_t mid = (lo + hi)/2, off = start + mid*struct_size;         \
+            type b = get_type(off + key_off);                                  \
+            if (a < b) hi = mid;                                               \
+            else if (a > b) lo = mid + 1;                                      \
+            else return search_success(start, struct_size, off, return_index); \
+        }                                                                      \
+        return search_failure(return_index);                                   \
     }
 
     /* Binary search */
+    switch (key_size)
     {
-        uint32_t lo = 0, hi = (end - start)/struct_size;
+    case 1: binsearch_direct(uint8_t,  get_byte)
+    case 2: binsearch_direct(uint16_t, get_shrt)
+    case 4: binsearch_direct(uint32_t, get_long)
+    default:
+        /* key_indirect should be true */
         while (lo < hi)
         {
             uint32_t mid = (lo + hi)/2, off = start + mid*struct_size;
-            int d = compare_key(key, key_size, off, key_offset, key_indirect);
+            int d = memcmp(&mem[key], &mem[off + key_off], key_size);
             if (d < 0) hi = mid;
             else if (d > 0) lo = mid + 1;
             else return search_success(start, struct_size, off, return_index);
         }
         return search_failure(return_index);
     }
-
+    #undef binsearch_direct
 }
 
+
 uint32_t native_linkedsearch(
-    uint32_t key, uint32_t key_size, uint32_t start, uint32_t key_offset,
+    uint32_t key, uint32_t key_size, uint32_t start, uint32_t key_off,
     uint32_t next_offset, uint32_t options )
 {
     /* not implemented */
     (void)key;
     (void)key_size;
     (void)start;
-    (void)key_offset;
+    (void)key_off;
     (void)next_offset;
     (void)options;
     assert(0);
@@ -262,7 +282,7 @@ uint32_t native_getstringtbl()
 
 uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
 {
-    uint32_t n, *args;
+    uint32_t n, *args, res;
 
     /* Copy arguments from stack to temporary buffer.
        (This is necessary since Glk may pop/push data on the stack too. */
@@ -270,20 +290,24 @@ uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
     for (n = 0; n < narg; ++n)
         args[n] = *--*sp;
 
-    return perform_glk(selector, narg, args);
+    glk_stack_ptr = sp;
+    res = perform_glk(selector, narg, args);
+    glk_stack_ptr = NULL;
+
+    return res;
 }
 
-uint32_t native_malloc(uint32_t a1)
+uint32_t native_malloc(uint32_t l1)
 {
     /* not implemented */
-    (void)a1;
+    (void)l1;
     return 0;
 }
 
-void native_mfree(uint32_t a1)
+void native_mfree(uint32_t l1)
 {
     /* not implemented */
-    (void)a1;
+    (void)l1;
 }
 
 void native_quit()
@@ -291,7 +315,7 @@ void native_quit()
     glk_exit();
 }
 
-int32_t native_random(int32_t a1)
+int32_t native_random(int32_t l1)
 {
     /* Dirty, but works well: */
     assert(RAND_MAX >= 256);
@@ -300,16 +324,14 @@ int32_t native_random(int32_t a1)
     roll ^= random() << 16;
     roll ^= random() << 24;
 
-    if (a1 > 0)
-        return (int32_t)(roll%a1);
+    if (l1 > 0)
+        return (int32_t)(roll%l1);
 
-    if ((uint32_t)a1 == 0x80000000)
+    if ((uint32_t)l1 == 0x80000000)
         return (int32_t)(roll|0x80000000u);
 
-    if (a1 < 0)
-        return -(int32_t)(roll%-a1);
-
-    return (int32_t)roll;
+    if (l1 < 0)
+        return -(int32_t)(roll%-l1);
 }
 
 void native_restart()
@@ -317,10 +339,10 @@ void native_restart()
     printf("native_restart()");
 }
 
-uint32_t native_restore(uint32_t a1)
+uint32_t native_restore(uint32_t l1)
 {
     /* not implemented */
-    (void)a1;
+    (void)l1;
     return 1; /* indicates failure! */
 }
 
@@ -330,10 +352,10 @@ uint32_t native_restoreundo()
     return 1; /* indicates failure! */
 }
 
-uint32_t native_save(uint32_t a1)
+uint32_t native_save(uint32_t l1)
 {
     /* not implemented */
-    (void)a1;
+    (void)l1;
     return 1; /* indicates failure! */
 }
 
@@ -343,9 +365,9 @@ uint32_t native_saveundo()
     return 1; /* indicates failure! */
 }
 
-void native_setiosys(uint32_t a1, uint32_t a2)
+void native_setiosys(uint32_t l1, uint32_t l2)
 {
-    switch (a1)
+    switch (l1)
     {
     case 0:
     default:
@@ -353,15 +375,15 @@ void native_setiosys(uint32_t a1, uint32_t a2)
         break;
 
     case 2:
-        (void)a2;  /* filtering not implemented yet */
+        (void)l2;  /* filtering not implemented yet */
         cur_iosys = 2;
         break;
     }
 }
 
-void native_setrandom(uint32_t a1)
+void native_setrandom(uint32_t l1)
 {
-    srandom(a1);
+    srandom(time(NULL));
 }
 
 static int get_tree_height(uint32_t offset)

@@ -121,13 +121,11 @@ def main(path = None):
         branch_targets = set([i.branch_target() for i in instrs])
         branch_targets.remove(None)
 
-        label_ret = [ False, False ]  # return 0/1 labels
-
         for instr in instrs:
             (param, sizes, code) = opcode_map[instr.mnemonic]
             assert len(param) == len(sizes) == len(instr.operands)
             if instr.offset() in branch_targets:
-                print 'l%08x: {' % instr.offset()
+                print 'a%08x: {' % instr.offset()
             else:
                 print '\t{ /* %08x */' % instr.offset()
 
@@ -139,11 +137,10 @@ def main(path = None):
                     assert s == 'x'
                     target = instr.branch_target()
                     if target is not None:
-                        print '\t\t#define b1 l%08x' % (target)
+                        print '\t\t#define b1 goto a%08x' % (target)
                     else:
                         target = instr.return_value()
-                        print '\t\t#define b1 l%d' % (target)
-                        label_ret[target] = True
+                        print '\t\t#define b1 return %d' % (target)
 
                 elif p == 'l':  # loaded argument
                     num_load += 1
@@ -202,13 +199,7 @@ def main(path = None):
 
             print '\t}'
 
-        if label_ret[0]:
-            print 'l0:\treturn 0;'
-        else:
-            print '\treturn 0;'
-        if label_ret[1]:
-            print 'l1:\treturn 1;'
-
+        print '\treturn 0;'
         print '}\n'
 
 if __name__ == '__main__': main(*sys.argv[1:])

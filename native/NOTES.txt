@@ -2,5 +2,13 @@ Contains some code (glkop.c) from Glulxle written by Andrew Plotkin.
 See also: http://eblong.com/zarf/glulx/index.html
 
 Major missing features:
+ - load blorb at startup
  - saving/loading of game state in files
  - saving/loading of state for undoing
+
+To figure out:
+ - packaging; into four files:
+    GLK-executable
+    dynamic library containing native interpreter code
+    dynamic library containing storyfile
+    blorb file containing storyfile

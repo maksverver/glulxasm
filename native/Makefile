@@ -1,4 +1,5 @@
 CFLAGS=-Wall -Wextra -O2 -Icheapglk/ -g
+#LDLIBS=garglk/libgarglkmain.a garglk/libgarglk.so
 LDLIBS=cheapglk/libcheapglk.a
 
 # Note: for x86, should probably add -march=i686 to speed up htons/htonl

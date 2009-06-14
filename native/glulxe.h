@@ -18,7 +18,7 @@
 #define glulx_free   free
 #define glulx_random random
 
-#define memmap ((uint8_t*)mem)
+#define memmap (mem)
 #define stackptr (*glk_stack_ptr)
 
 #define Mem4(adr)       (ntohl(*(uint32_t*)&mem[adr]))

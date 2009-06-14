@@ -27,15 +27,24 @@ static uint32_t get_checksum()
 static bool load_story(const char *path)
 {
     uint32_t checksum;
+    size_t nread;
     FILE *fp = fopen(path, "rb");
     if (fp == NULL)
     {
-        fprintf(stderr, "Story file \"%s\" could not be opened!", path);
+        fprintf(stderr, "Story file \"%s\" could not be opened!\n", path);
         return false;
     }
-    if (fread(mem, 1, init_extstart, fp) != init_extstart)
+    nread = fread(mem, 1, init_extstart, fp);
+    if (nread == 0)
     {
-        fprintf(stderr, "Story file \"%s\" could not be read!", path);
+        fprintf(stderr, "Story file \"%s\" could not be read!\n", path);
+        return false;
+    }
+    if (nread < init_extstart)
+    {
+        fprintf(stderr, "Story file \"%s\" is too short "
+                        "(read %d bytes, need %d bytes)!\n",
+                        path, init_extstart, nread);
         return false;
     }
     fclose(fp);
@@ -50,6 +59,7 @@ static bool load_story(const char *path)
         return false;
     }
 
+    /* Clear remaining memory */
     memset(mem + init_extstart, 0, init_endmem - init_extstart);
 
     return true;

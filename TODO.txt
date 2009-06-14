@@ -1,15 +1,28 @@
 glxd:
- - decode encoded strings, so they can be emitted as functions?
+ - maybe later: decode encoded strings, so they can be emitted as functions?
+   (probably only increases the code size for little good reason; string
+   decoding is fast enough as it is, and isn't usually a bottleneck; we can
+   decode faster than the player can read!)
 
-glulx-to-c/native:
+glulx-to-c:
+
+native:
+
+glulx-to-llvm:
+    - write this! could be interesting.
+
 
 opcode-map:
  - add code for missing opcodes
 
 native:
- - support for true binary search
- - support for decoding strings with Huffman table
- - maybe later: support for native accellerated functions?
+ - support for blorb
+ - maybe: support for native accellerated functions?
+          (this might not be necessary; need to check generated code)
+ - platform specific error reporting (file not found in message box
+   on Windows and such)
+ - windows: verify htonl etc. use bswap
+
 
 Later optimizations in C code generation:
  - convert use of stack to use of local variables
