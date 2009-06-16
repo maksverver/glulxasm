@@ -3,19 +3,6 @@
 #include <string.h>
 #include <assert.h>
 
-void fatal_error(const char *msg)
-{
-    fprintf(stderr, "FATAL ERROR: %s\n", msg);
-    fflush(stderr);
-    abort();
-}
-
-void nonfatal_warning(const char *msg)
-{
-    fprintf(stderr, "WARNING: %s\n", msg);
-    fflush(stderr);
-}
-
 char *make_temp_string(glui32 addr)
 {
     char *res;

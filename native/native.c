@@ -2,6 +2,7 @@
 #include "glkop.h"
 #include "storyfile.h"
 #include <assert.h>
+#include <malloc.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>

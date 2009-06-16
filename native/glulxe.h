@@ -4,6 +4,7 @@
 /* This file provides some macros similar to Glulxe for the benefit of gklop.c,
    which was taken verbatim from Glulxe. */
 
+#include "messages.h"
 #include "xtoy.h"
 #include "glk.h"
 
@@ -16,7 +17,7 @@
 
 #define glulx_malloc malloc
 #define glulx_free   free
-#define glulx_random random
+#define glulx_random rand
 
 #define memmap (mem)
 #define stackptr (*glk_stack_ptr)
@@ -35,8 +36,8 @@ extern uint8_t mem[];
 extern uint32_t **glk_stack_ptr;
 
 /* Defined in glulxe.c */
-void fatal_error(const char *msg);
-void nonfatal_warning(const char *msg);
+#define fatal_error(msg) fatal("%s", msg)
+#define nonfatal_warning(msg) warn("%s", msg)
 char *make_temp_string(glui32 addr);
 glui32 *make_temp_ustring(glui32 addr);
 void free_temp_string(char *str);
