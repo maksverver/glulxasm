@@ -1,3 +1,9 @@
+!!! Uitzoeken waarom Alabaster niet goed werkt.
+
+=> Gebruik savegames om verschil te vinden in geheugen.
+=> Waarom savet mijn versie settings in bestand genaamd "X" ipv alabastersettings?
+
+
 glxd:
  - maybe later: decode encoded strings, so they can be emitted as functions?
    (probably only increases the code size for little good reason; string

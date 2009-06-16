@@ -159,10 +159,12 @@ def main(path = None):
                     htonx = hton_type(s)
 
                     if o.is_immediate():
-                        print '\t\t%s l%d = %d;' % (t, num_load, o.value())
+                        v = str(o.value())
+                        if s in 'LSB': v += 'u'
+                        print '\t\t%s l%d = %s;' % (t, num_load, v)
                     elif o.is_mem_ref():
                         print '\t\t%s l%d = %s(*(%s*)&mem[%d]);' % \
-                            (t, num_load, ntoh_type(s), t, o.value())
+                            (t, num_load, ntoh_type(s), t, o.value()&0xffffffff)
                     elif o.is_ram_ref():
                         print '\t\t%s l%d = %s(*(%s*)&mem[%d + RAMSTART]);' % \
                             (t, num_load, ntoh_type(s), t, o.value())

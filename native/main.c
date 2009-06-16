@@ -46,5 +46,8 @@ void glk_main()
     native_setstringtbl(init_decoding_tbl);
     stack[0] = 0;
     func(init_start_func)(&stack[0]);
+
+#if 0 /* this is for later */
     free(call_stack);
+#endif
 }
