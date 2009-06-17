@@ -187,7 +187,7 @@ def main(path = None):
             if code != '':
                 print '\t\t' + code
             else:
-                print '\t\tnative_invalidop(%d, "unsupported operation: %s");'%\
+                print '\t\tnative_invalidop(%d, "%s");'%\
                     (instr.offset(), instr.mnemonic)
 
             num_load = num_store = 0

@@ -33,12 +33,12 @@ glulxercise:
 operand         passed
 arith           passed
 bitwise         passed
-shift           passed (was: 8 failures with signed shift by >=32 bits)
+shift           passed
 trunc           passed (was: 2 failures related to aliasing)
 extend          passed
 aload           passed
-astore          5 tests failed
-arraybit        12 tests failed
+astore          passed (was: 5 tests failed related to aliasing)
+arraybit        passed
 call            passed
 callstack       passed
 jump            2 tests failed (jumpabs not supported)

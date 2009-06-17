@@ -44,8 +44,8 @@ astores             lll       LLL       set_shrt(l1 + 2*l2, l3);
 aloads              lls       LLL       s1 = get_shrt(l1 + 2*l2);
 astoreb             lll       LLL       set_byte(l1 + l2, l3);
 aloadb              lls       LLL       s1 = get_byte(l1 + l2);
-astorebit           lll       LlL       int a=l1+l2/8, b=l2%8; set_byte(a, (get_byte(a)&~(1<<b))|((l3!=0)<<(b)));
-aloadbit            lls       LlL       s1 = (get_byte(l1+l2/8)>>(l2%8))&1;
+astorebit           lll       LlL       uint32_t b=l2&7, a=l1+((int)(l2-b))/8; set_byte(a, (get_byte(a)&~(1<<b))|((l3!=0)<<(b)));
+aloadbit            lls       LlL       uint32_t b=l2&7, a=l1+((int)(l2-b))/8; s1 = (get_byte(a)>>(b))&1;
 
 stkcount            s         L         s1 = sp - bp;
 stkpeek             ls        LL        s1 = sp[-l1 - 1];
