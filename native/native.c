@@ -515,8 +515,9 @@ void native_stkroll(uint32_t size, int32_t steps, uint32_t *sp)
 
     if (size == 0 || steps == 0) return;
 
-    steps %= size;
-    if (steps < 0) steps = size - steps;
+    /* NOTE: this has some nasty border cases (steps >= 0x80000000,
+             size == 0x80000000, etc.) but these don't happen in practice. */
+    steps = (steps >= 0) ? (steps%size) : (size - (-steps)%(int32_t)size);
 
     sp -= size;
     copy = alloca(sizeof(uint32_t)*size);

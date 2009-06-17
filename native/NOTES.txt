@@ -44,7 +44,7 @@ callstack       passed
 jump            2 tests failed (jumpabs not supported)
 jumpform        20 tests failed (indirect jump not supported)
 compare         passed
-stack           !crash!
+stack           passed
 strings         !crash!
 iosys           !crash!
 filter          !crash!

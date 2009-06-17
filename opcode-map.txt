@@ -48,7 +48,7 @@ astorebit           lll       LlL       uint32_t b=l2&7, a=l1+((int)(l2-b))/8; s
 aloadbit            lls       LlL       uint32_t b=l2&7, a=l1+((int)(l2-b))/8; s1 = (get_byte(a)>>(b))&1;
 
 stkcount            s         L         s1 = sp - bp;
-stkpeek             ls        LL        s1 = sp[-l1 - 1];
+stkpeek             ls        LL        s1 = *(sp - l1 - 1);
 stkswap             -         -         uint32_t tmp = sp[-1]; sp[-1] = sp[-2]; sp[-2] = tmp;
 stkcopy             l         l         int32_t n; for (n = 0; n < l1; ++n) sp[n] = sp[n - l1]; sp += l1;
 stkroll             ll        Ll        native_stkroll(l1, l2, sp);
