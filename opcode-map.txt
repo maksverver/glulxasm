@@ -14,7 +14,7 @@ bitxor              lls       LLL       s1 = l1 ^ l2;
 bitnot              ls        LL        s1 = ~l1;
 shiftl              lls       LLL       s1 = (l2 < 32) ? (l1 << l2) : 0;
 ushiftr             lls       LLL       s1 = (l2 < 32) ? (l1 >> l2) : 0;
-sshiftr             lls       lLl       s1 = (l2 < 32) ? (l1 >> l2) : 0;
+sshiftr             lls       lLl       s1 = (l2 < 32) ? (l1 >> l2) : (l1 < 0 ? -1 : 0);
 
 jump                b         x         b1;
 jz                  lb        Lx        if (l1 == 0) b1;

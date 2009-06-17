@@ -33,8 +33,8 @@ glulxercise:
 operand         passed
 arith           passed
 bitwise         passed
-shift           8 failures
-trunc           psased (2 failures with -fstrict-aliasing!)
+shift           passed (was: 8 failures with signed shift by >=32 bits)
+trunc           passed (was: 2 failures related to aliasing)
 extend          passed
 aload           passed
 astore          5 tests failed
