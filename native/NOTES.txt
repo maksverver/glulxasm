@@ -24,3 +24,31 @@ Accelerated functions:
     4.3512%  func000932ea (accel_func 5)
     2.7118%  func00092efb (accel_func 6)
     2.8420%  func00093287 (accel_func 7)
+
+
+I've found some nice unittests on zarfs homepage. I don't expect to support
+everything in this package, but at least here is a list of tests that fail:
+
+glulxercise:
+operand         passed
+arith           passed
+bitwise         passed
+shift           8 failures
+trunc           psased (2 failures with -fstrict-aliasing!)
+extend          passed
+aload           passed
+astore          5 tests failed
+arraybit        12 tests failed
+call            passed
+callstack       passed
+jump            2 tests failed (jumpabs not supported)
+jumpform        20 tests failed (indirect jump not supported)
+compare         passed
+stack           !crash!
+strings         !crash!
+iosys           !crash!
+filter          !crash!
+nullio          !crash!
+
+memcopytest:
+seems to work OK (no specific test cases given)

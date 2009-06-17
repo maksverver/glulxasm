@@ -5,7 +5,7 @@
    which was taken verbatim from Glulxe. */
 
 #include "messages.h"
-#include "xtoy.h"
+#include "memaccess.h"
 #include "glk.h"
 
 #include <stdlib.h>
@@ -22,15 +22,11 @@
 #define memmap (mem)
 #define stackptr (*glk_stack_ptr)
 
-#define Mem4(adr)       (ntohl(*(uint32_t*)&mem[adr]))
-#define MemW4(adr, vl)  (*(uint32_t*)&mem[adr] = htonl(vl))
+#define Mem4(adr)       get_long(adr)
+#define MemW4(adr, vl)  set_long(adr, vl)
 
-#define Stk4(ptr)       (glui32)(*ptr)
+#define Stk4(ptr)       (*ptr)
 #define StkW4(ptr, vl)  (*ptr = vl)
-
-
-/* Defined in storyfile.c */
-extern uint8_t mem[];
 
 /* Defined in native.c */
 extern uint32_t **glk_stack_ptr;

@@ -16,6 +16,7 @@ def read_opcode_map():
         mnem, param, sizes, code = line.split(None,3)
         if param == '-': param = ''
         if sizes == '-': sizes = ''
+        if code  == '-': code  = ''
         assert mnem not in opcode_map
         opcode_map[mnem] = (param, sizes, code)
 
@@ -31,22 +32,19 @@ def int_type(size):
     if size == 'l': return 'int32_t'
     assert 0
 
-def hton_type(size):
-    if size == 'B': return ''
-    if size == 'S': return 'htons'
-    if size == 'L': return 'htonl'
-    if size == 'b': return ''
-    if size == 's': return '(int16_t)htons'
-    if size == 'l': return '(int32_t)htonl'
+def getter(size):
+    if size == 'B': return 'get_byte'
+    if size == 'S': return 'get_shrt'
+    if size == 'L': return 'get_long'
+    if size == 'b': return '(int8_t)get_byte'
+    if size == 's': return '(int16_t)get_shrt'
+    if size == 'l': return '(int32_t)get_long'
     assert 0
 
-def ntoh_type(size):
-    if size == 'B': return ''
-    if size == 'S': return 'ntohs'
-    if size == 'L': return 'ntohl'
-    if size == 'b': return ''
-    if size == 's': return '(int16_t)ntohs'
-    if size == 'l': return '(int32_t)ntohl'
+def setter(size):
+    if size in ('B', 'b'): return 'set_byte'
+    if size in ('S', 's'): return 'set_shrt'
+    if size in ('L', 'l'): return 'set_long'
     assert 0
 
 def main(path = None):
@@ -151,23 +149,26 @@ def main(path = None):
                         print '\t\t#define b1 goto a%08x' % (target)
                     else:
                         target = instr.return_value()
-                        print '\t\t#define b1 return %d' % (target)
+                        if target is not None:
+                            print '\t\t#define b1 return %d' % (target)
+                        else:
+                            print '\t\t#define b1 native_invalidop(%d, "%s")'%\
+                                (instr.offset(), 'indirect jump target')
 
                 elif p == 'l':  # loaded argument
                     num_load += 1
                     t = int_type(s)
-                    htonx = hton_type(s)
 
                     if o.is_immediate():
                         v = str(o.value())
                         if s in 'LSB': v += 'u'
                         print '\t\t%s l%d = %s;' % (t, num_load, v)
                     elif o.is_mem_ref():
-                        print '\t\t%s l%d = %s(*(%s*)&mem[%d]);' % \
-                            (t, num_load, ntoh_type(s), t, o.value()&0xffffffff)
+                        print '\t\t%s l%d = %s(%d);' % \
+                            (t, num_load, getter(s), o.value()&0xffffffff)
                     elif o.is_ram_ref():
-                        print '\t\t%s l%d = %s(*(%s*)&mem[%d + RAMSTART]);' % \
-                            (t, num_load, ntoh_type(s), t, o.value())
+                        print '\t\t%s l%d = %s(%d + RAMSTART);' % \
+                            (t, num_load, getter(s), o.value())
                     elif o.is_local_ref():
                         assert o.value()%4 == 0
                         print '\t\t%s l%d = loc%d;' % (t, num_load, o.value()/4)
@@ -183,7 +184,11 @@ def main(path = None):
                 else:
                     assert 0
 
-            print '\t\t'+code
+            if code != '':
+                print '\t\t' + code
+            else:
+                print '\t\tnative_invalidop(%d, "unsupported operation: %s");'%\
+                    (instr.offset(), instr.mnemonic)
 
             num_load = num_store = 0
             for n,o,p,s in zip(ids, instr.operands, param, sizes):
@@ -196,11 +201,11 @@ def main(path = None):
                     if o.is_immediate():
                         assert o.value() == 0
                     elif o.is_mem_ref():
-                        print '\t\t*(%s*)&mem[%d] = %s(s%d);' % \
-                            (t, o.value(), hton_type(s), num_store)
+                        print '\t\t%s(%d, s%d);' % \
+                            (setter(s), o.value(), num_store)
                     elif o.is_ram_ref():
-                        print '\t\t*(%s*)&mem[%d + RAMSTART] = %s(s%d);' % \
-                            (t, o.value(), hton_type(s), num_store)
+                        print '\t\t%s(%d + RAMSTART, s%d);' % \
+                            (setter(s), o.value(), num_store)
                     elif o.is_local_ref():
                         print '\t\tloc%d = s%d;' % (o.value()/4, num_store)
                     elif o.is_stack_ref():

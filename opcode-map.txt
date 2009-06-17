@@ -30,7 +30,7 @@ jleu                llb       LLx       if (l1 <= l2) b1;
 jgtu                llb       LLx       if (l1 >  l2) b1;
 jgeu                llb       LLx       if (l1 >= l2) b1;
 
-jumpabs             l         L         abort(); /* unimplemented: jumpabs */
+jumpabs             l         L         -
 
 copy                ls        LL        s1 = l1;
 copys               ls        SS        s1 = l1;
@@ -62,8 +62,8 @@ callfiii            lllls     LLLLL     *sp++ = l4; *sp++ = l3; *sp++ = l2; *sp 
 ret                 l         L         return l1;
 tailcall            ll        LL        *sp = l2; return func(l1)(sp);
 
-catch               sl        LL        abort(); /* unimplemented: catch */
-throw               ll        LL        abort(); /* unimplemented: throw */
+catch               sl        LL        -
+throw               ll        LL        -
 
 getmemsize          s         L         s1 = native_getmemsize();
 setmemsize          ls        LL        s1 = native_setmemsize(l1);

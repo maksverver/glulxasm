@@ -2,7 +2,6 @@
 #define STORYFILE_H_INCLUDED
 
 #include "native.h"
-#include "xtoy.h"
 
 extern const uint32_t init_ramstart;
 extern const uint32_t init_extstart;

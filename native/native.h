@@ -3,15 +3,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "xtoy.h"
-
-#define get_byte(a) (*(uint8_t*)&mem[a])
-#define get_shrt(a) (ntohs(*(uint16_t*)&mem[a]))
-#define get_long(a) (ntohl(*(uint32_t*)&mem[a]))
-
-#define set_byte(a,v) ((void)(*(uint8_t*)&mem[a] = (v)))
-#define set_shrt(a,v) ((void)(*(uint16_t*)&mem[a] = htons(v)))
-#define set_long(a,v) ((void)(*(uint32_t*)&mem[a] = htonl(v)))
+#include "memaccess.h"
 
 void native_accelfunc(uint32_t l1, uint32_t l2);
 void native_accelparam(uint32_t l1, uint32_t l2);
@@ -30,6 +22,7 @@ void native_getiosys(uint32_t *mode, uint32_t *rock);
 uint32_t native_getmemsize();
 uint32_t native_getstringtbl();
 uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp);
+void native_invalidop(uint32_t offset, const char *descr);
 uint32_t native_malloc(uint32_t size);
 void native_mfree(uint32_t offset);
 void native_protect(uint32_t offset, uint32_t size);

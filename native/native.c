@@ -1,4 +1,5 @@
 #include "native.h"
+#include "messages.h"
 #include "glkop.h"
 #include "storyfile.h"
 #include <assert.h>
@@ -298,6 +299,10 @@ uint32_t native_getstringtbl()
     return cur_decoding_tbl;
 }
 
+#ifdef NATIVE_DEBUG_GLK
+#include "gi_dispa.h"
+#endif
+
 uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
 {
     uint32_t n, *args, res;
@@ -305,14 +310,36 @@ uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
     /* Copy arguments from stack to temporary buffer.
        (This is necessary since Glk may pop/push data on the stack too. */
     args = alloca(sizeof(narg)*sizeof(uint32_t));
+    *sp -= narg;
     for (n = 0; n < narg; ++n)
-        args[n] = *--*sp;
+        args[n] = (*sp)[narg - n - 1];
+
+#ifdef NATIVE_DEBUG_GLK
+    printf( "glk(0x%02x, %d) %s(", selector, narg,
+            gidispatch_get_function_by_id(selector)->name );
+    for (n = 0; n < narg; ++n) {
+        if (n > 0) printf(", ");
+        printf("%d", args[n]);
+    }
+    printf(")");
+    fflush(stdout);
+#endif /* def NATIVE_DEBUG_GLK */
 
     glk_stack_ptr = sp;
     res = perform_glk(selector, narg, args);
     glk_stack_ptr = NULL;
 
+#ifdef NATIVE_DEBUG_GLK
+    printf(" => %d\n", res);
+    fflush(stdout);
+#endif
+
     return res;
+}
+
+void native_invalidop(uint32_t offset, const char *descr)
+{
+    error("unsupported operation at offset 0x%08x: %s", offset, descr);
 }
 
 uint32_t native_malloc(uint32_t size)
