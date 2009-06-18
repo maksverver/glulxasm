@@ -7,7 +7,7 @@
 extern uint8_t mem[];
 
 #define get_byte(a) (mem[a])
-#define set_byte(a,v) ((void)(mem[a] = v))
+#define set_byte(a,v) ((void)(mem[a] = (v)))
 
 /* These macro's respect strict aliasing rules: */
 #define get_shrt(a) ({ uint16_t v; memcpy(&v, &mem[a], 2); ntohs(v); })

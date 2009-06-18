@@ -20,14 +20,14 @@
 #define glulx_free   free
 #define glulx_random rand
 
-#define memmap (mem)
-#define stackptr (*glk_stack_ptr)
+#define memmap ((uint8_t*)mem)
+#define stackptr (*(uint8_t**)glk_stack_ptr)
 
 #define Mem4(adr)       get_long(adr)
 #define MemW4(adr, vl)  set_long(adr, vl)
 
 #define Stk4(ptr)       (*ptr)
-#define StkW4(ptr, vl)  (*ptr = vl)
+#define StkW4(ptr, vl)  (*(uint32_t**)ptr = (vl))
 
 uint32_t *native_ustring_dup(uint32_t offset);
 extern uint32_t **glk_stack_ptr;
