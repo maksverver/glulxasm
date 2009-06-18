@@ -6,7 +6,7 @@
 char *make_temp_string(glui32 addr)
 {
     char *res;
-    assert(get_byte(addr) == 0xe0);
+    assert(get_byte(addr) == 0xe0 || get_byte(addr) == 0x03);
     res = strdup((char*)&mem[addr + 1]);
     assert(res != NULL);
     return res;

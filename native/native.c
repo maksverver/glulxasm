@@ -430,8 +430,11 @@ void native_setiosys(uint32_t mode, uint32_t rock)
 {
     switch (mode)
     {
-    case 0:  /* null iosys */
     default:
+        error("invalid I/O mode selected (%u, %u)", mode, rock);
+        /* falls through */
+
+    case 0:  /* null iosys */
         cur_iosys_mode = 0;
         cur_iosys_rock = rock;
         break;
@@ -513,11 +516,11 @@ void native_stkroll(uint32_t size, int32_t steps, uint32_t *sp)
 
     uint32_t *copy, i, j;
 
-    if (size == 0 || steps == 0) return;
-
-    /* NOTE: this has some nasty border cases (steps >= 0x80000000,
-             size == 0x80000000, etc.) but these don't happen in practice. */
-    steps = (steps >= 0) ? (steps%size) : (size - (-steps)%(int32_t)size);
+    /* NOTE: we assume size < 0x80000000 here! */
+    if (size == 0) return;
+    steps %= (int32_t)size;
+    if (steps == 0) return;
+    if (steps < 0) steps += size;
 
     sp -= size;
     copy = alloca(sizeof(uint32_t)*size);
@@ -532,16 +535,36 @@ void native_stkroll(uint32_t size, int32_t steps, uint32_t *sp)
     }
 }
 
+static void native_put_string(char *s)
+{
+    if (cur_iosys_mode == 2) glk_put_string(s);
+}
+
+static void native_put_string_uni(uint32_t *s)
+{
+    if (cur_iosys_mode == 2) glk_put_string_uni(s);
+}
+
+static void native_put_char(uint32_t ch)
+{
+    if (cur_iosys_mode == 2) glk_put_char(ch);
+}
+
+static void native_put_char_uni(uint32_t ch)
+{
+    if (cur_iosys_mode == 2) glk_put_char_uni(ch);
+}
+
 void native_streamchar(uint32_t ch)
 {
-    glk_put_char(ch);
+    native_put_char(ch);
 }
 
 void native_streamnum(int32_t n)
 {
     char buf[12];
     snprintf(buf, sizeof(buf), "%d", n);
-    glk_put_string(buf);
+    native_put_string(buf);
 }
 
 /* Stream compressed stream data starting from `offset'. */
@@ -577,17 +600,21 @@ static void stream_compressed_string(uint32_t offset)
                 return;
 
             case 0x02:  /* single character */
-                native_streamchar(get_byte(node_offset + 1));
+                native_put_char(get_byte(node_offset + 1));
                 break;
 
             case 0x03:  /* C-style string */
-                glk_put_string((char*)&mem[node_offset + 1]);
-                break;
+                {
+                    char *p = make_temp_string(node_offset);
+                    native_put_string(p);
+                    free_temp_string(p);
+                } break;
 
             /* TODO: other node types? */
 
             default:  /* unknown node type */
-                assert(0);
+		error("unsupported node type (%d) in encoded string",
+                      get_byte(node_offset));
             }
         }
     }
@@ -600,7 +627,7 @@ void native_streamstr(uint32_t offset)
     case 0xe0:  /* unencoded C-string */
         {
             char *p = make_temp_string(offset);
-            glk_put_string(p);
+            native_put_string(p);
             free_temp_string(p);
         } break;
 
@@ -608,7 +635,7 @@ void native_streamstr(uint32_t offset)
         {
             /* We need a temp-string to fix alignment & byte order */
             uint32_t *p = make_temp_ustring(offset);
-            glk_put_string_uni(p);
+            native_put_string_uni(p);
             free_temp_ustring(p);
         }
         break;
