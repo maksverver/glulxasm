@@ -334,7 +334,7 @@ void native_streamstr(uint32_t offset, uint32_t *sp)
     case 0xe2:  /* unencoded unicode string */
         {
             /* We need a temp-string to fix alignment & byte order */
-            uint32_t *p = native_ustring_dup(offset + 1);
+            uint32_t *p = native_ustring_dup(offset + 4);
             native_put_string_uni(p);
             free(p);
         }
@@ -357,12 +357,19 @@ void native_streamunichar(uint32_t ch)
 glui32 *native_ustring_dup(uint32_t offset)
 {
     glui32 *res;
-    uint32_t i, j, k;
+    size_t n, length;
 
-    i = j = offset;
-    while (get_long(j) != 0) ++j;
-    res = malloc((j - i + 1)*sizeof(glui32));
+    /* Figure out length of string */
+    length = 0;
+    while (get_long(offset + 4*length) != 0) ++length;
+
+    /* Allocate memory for copy */
+    res = malloc((length + 1)*sizeof(glui32));
     assert(res != NULL);
-    for (k = i; k <= j; ++k) res[k - i] = get_long(k);
+
+    /* Copy data */
+    for (n = 0; n < length; ++n) res[n] = get_long(offset + 4*n);
+    res[n] = 0;
+
     return res;
 }

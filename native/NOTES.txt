@@ -29,11 +29,10 @@ Accelerated functions:
 Zarf has updated code on Github: http://github.com/erkyrath/
 
 glulxercise:
-68 failures.
+65 failures.
 - jump: 2 (jumpabs not being supported)
 - jumpform: 20 (jump to indirect offset not being supported)
 - throw: 20 (not supported)
-- strings: 3 (TODO)
 - iosys: 11 (TODO?)
 - filter: 11 (TODO?)
 - nullio: 1 (TODO?)
