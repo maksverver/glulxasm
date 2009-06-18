@@ -10,6 +10,14 @@
 #include "gi_dispa.h"
 #endif
 
+/* Set this to the length n of bitstrings to precompute (n<=24).
+   Requires 8*(1<<n) bytes of string table data, and a comparable amount of
+   time. In practice, this doesn't seem to help much, so I've disabled it
+   for now. */
+#ifndef NATIVE_MAX_STRTBL_BITS
+#define NATIVE_MAX_STRTBL_BITS 0
+#endif
+
 static uint32_t cur_iosys_mode      = 0;
 static uint32_t cur_iosys_rock      = 0;
 static uint32_t cur_decoding_tbl    = 0;
@@ -17,18 +25,15 @@ static uint32_t cur_decoding_tbl    = 0;
 /* The string table is encoded in the story file as a Huffman tree. When it
    is loaded, it is converted to a look-up table of size 2**H, where H is the
    height of the tree, where we can look up multiple bits at once. Each lookup
-   results in one node being selected and a number of bits being shifted.
-
-   Note that building the look-up table (and therefore the setstringtbl opcode)
-   is relatively slow, so games shouldn't do that often!
-*/
+   results in one node being selected and a number of bits being shifted. */
+#if NATIVE_MAX_STRTBL_BITS > 0
 static int strtbl_bits = 0;
 static struct StringTableEntry
 {
     int      bits_used;
     uint32_t node_offset;
 } *strtbl = NULL;
-
+#endif
 
 /* Temporarily exported stack pointer (for use by GLK dispatch layer): */
 uint32_t **glk_stack_ptr = NULL;
@@ -109,6 +114,7 @@ void native_setiosys(uint32_t mode, uint32_t rock)
     }
 }
 
+#if NATIVE_MAX_STRTBL_BITS > 0
 static int get_tree_height(uint32_t offset)
 {
     int a, b;
@@ -118,27 +124,28 @@ static int get_tree_height(uint32_t offset)
     return 1 + (a > b ? a : b);
 }
 
-static void build_string_table(uint32_t offset, uint32_t value, int bits_used)
+static void build_strtbl(uint32_t offset, uint32_t value, int used, int left)
 {
-    if (get_byte(offset) == 0)
+    if (left > 0 && get_byte(offset) == 0)
     {
         /* branch node */
-        build_string_table(get_long(offset + 1), value, bits_used + 1);
-        value |= 1<<bits_used;
-        build_string_table(get_long(offset + 5), value, bits_used + 1);
+        build_strtbl(get_long(offset + 1), value, used + 1, left - 1);
+        value |= (1<<used);
+        build_strtbl(get_long(offset + 5), value, used + 1, left - 1);
     }
     else
     {
-        /* leaf node */
-        uint32_t n, bits_unused = strtbl_bits - bits_used;
-        for (n = 0; n < (1u<<bits_unused); ++n)
+        /* terminal node (either a leaf node, or no bits left)*/
+        uint32_t n;
+        for (n = 0; n < (1u<<left); ++n)
         {
-            struct StringTableEntry *entry = &strtbl[(n << bits_used)|value];
-            entry->bits_used   = bits_used;
+            struct StringTableEntry *entry = &strtbl[(n << used)|value];
+            entry->bits_used   = used;
             entry->node_offset = offset;
         }
     }
 }
+#endif
 
 void native_setstringtbl(uint32_t offset)
 {
@@ -147,23 +154,30 @@ void native_setstringtbl(uint32_t offset)
 
     cur_decoding_tbl = offset;
 
+#if NATIVE_MAX_STRTBL_BITS > 0
     if (strtbl != NULL)
     {
         free(strtbl);
         strtbl = NULL;
     }
 
+    if (offset != 0)
     {
+        /* Set new table */
         uint32_t end = offset + get_long(offset);
         uint32_t root = get_long(offset + 8);
         strtbl_bits = get_tree_height(root);
-        if (offset > 0 && end <= init_ramstart && strtbl_bits <= 20)
+        if (strtbl_bits > NATIVE_MAX_STRTBL_BITS)
+            strtbl_bits = NATIVE_MAX_STRTBL_BITS;
+        if (end <= init_ramstart)
         {
+            /* Precompute string table */
             strtbl = malloc((1<<strtbl_bits)*sizeof(*strtbl));
             assert(strtbl != NULL);
-            build_string_table(root, 0, 0);
+            build_strtbl(root, 0, 0, strtbl_bits);
         }
     }
+#endif
 }
 
 static void native_put_string(char *s)
@@ -213,39 +227,48 @@ static void stream_compressed_string(uint32_t string_offset, uint32_t *sp)
     for (;;)
     {
         uint32_t node_offset;  /* offset of next leaf node */
+        int node_type;
 
-        /* Gather enough bits to look up value in the string table */
-        /* Note that this may overflow memory, but that can happen anyway, as
-           there is no guarantee that the encoded string is encoded properly. */
-        while (bits < strtbl_bits)
+#if NATIVE_MAX_STRTBL_BITS > 0
+        if (strtbl != NULL)
         {
-            value |= get_byte(string_offset++) << bits;
-            bits += 8;
-        }
-
-        if (strtbl == NULL)
-        {
-            /* Look up the next leaf node bit-by-bit */
-            node_offset = get_long(cur_decoding_tbl + 8);
-            while (get_byte(node_offset) == 0)
+            while (bits < strtbl_bits)
             {
-                node_offset = get_long(node_offset + ((value&1) ? 5 : 1));
-                value >>= 1;
-                bits   -= 1;
+                value |= get_byte(string_offset++) << bits;
+                bits  += 8;
+            }
+
+            /* Find terminal node in string table */
+            {
+                const uint32_t mask = (1u<<strtbl_bits)-1;
+                struct StringTableEntry *entry = &strtbl[value&mask];
+                node_offset = entry->node_offset;
+                bits   -= entry->bits_used;
+                value >>= entry->bits_used;
             }
         }
-        else    /* strtbl != NULL */
+        else
+#endif
         {
-            /* Look up the next leaf node using the decoding table */
-            const uint32_t mask = (1<<strtbl_bits)-1;
-            struct StringTableEntry *entry = &strtbl[value&mask];
-            node_offset = entry->node_offset;
-            bits   -= entry->bits_used;
-            value >>= entry->bits_used;
+            /* Start at root node */
+            node_offset = get_long(cur_decoding_tbl + 8);
+        }
+
+        /* Look up the next leaf node bit-by-bit */
+        while ((node_type = get_byte(node_offset)) == 0)
+        {
+            if (bits == 0)
+            {
+                value = get_byte(string_offset++) << bits;
+                bits  = 8;
+            }
+            node_offset = get_long(node_offset + ((value&1) ? 5 : 1));
+            value >>= 1;
+            bits   -= 1;
         }
 
         /* Process next leaf node */
-        switch (get_byte(node_offset))
+        switch (node_type)
         {
         case 0x01:  /* string terminator */
             return;
@@ -274,10 +297,9 @@ static void stream_compressed_string(uint32_t string_offset, uint32_t *sp)
         case 0x0A:
         case 0x0B:
             {
-                uint8_t ref_type = get_byte(node_offset);
                 uint32_t obj_offset = get_long(node_offset + 1);
 
-                if (ref_type == 0x09 || ref_type == 0x0b)
+                if (node_type == 0x09 || node_type == 0x0b)
                     obj_offset = get_long(obj_offset);
 
                 switch (get_byte(obj_offset))
@@ -294,7 +316,7 @@ static void stream_compressed_string(uint32_t string_offset, uint32_t *sp)
                         uint32_t narg, n;
 
                         /* Determine number of arguments */
-                        if (ref_type == 0x0a || ref_type == 0x0b)
+                        if (node_type == 0x0a || node_type == 0x0b)
                             narg = get_long(node_offset + 5);
                         else
                             narg = 0;
