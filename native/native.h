@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include "memaccess.h"
 
+/* Interpreter version (major.minor.revis) */
+#define NATIVE_VERSION_MAJOR (0)
+#define NATIVE_VERSION_MINOR (1)
+#define NATIVE_VERSION_REVIS (0)
+
 void native_accelfunc(uint32_t l1, uint32_t l2);
 void native_accelparam(uint32_t l1, uint32_t l2);
 uint32_t native_linearsearch(
@@ -41,8 +46,9 @@ void native_setstringtbl(uint32_t offset);
 void native_stkroll(uint32_t size, int32_t steps, uint32_t *sp);
 void native_streamchar(uint32_t ch);
 void native_streamnum(int32_t n);
-void native_streamstr(uint32_t offset);
+void native_streamstr(uint32_t offset, uint32_t *sp);
 void native_streamunichar(uint32_t ch);
+uint32_t *native_ustring_dup(uint32_t offset);
 uint32_t native_verify();
 
 #endif /* ndef NATIVE_H_INCLUDED */

@@ -53,11 +53,11 @@ stkswap             -         -         uint32_t tmp = sp[-1]; sp[-1] = sp[-2]; 
 stkcopy             l         l         int32_t n; for (n = 0; n < l1; ++n) sp[n] = sp[n - l1]; sp += l1;
 stkroll             ll        Ll        native_stkroll(l1, l2, sp);
 
-call                lls       LLL       *sp = l2; s1 = func(l1)(sp); sp -= l2;
-callf               ls        LL        *sp = 0; s1 = func(l1)(sp);
-callfi              lls       LLL       *sp++ = l2; *sp = 1; s1 = func(l1)(sp); sp -= 1;
-callfii             llls      LLLL      *sp++ = l3; *sp++ = l2; *sp = 2; s1 = func(l1)(sp); sp -= 2;
-callfiii            lllls     LLLLL     *sp++ = l4; *sp++ = l3; *sp++ = l2; *sp = 3; s1 = func(l1)(sp); sp -= 3;
+call                lls       LLL       *sp = l2; sp -= l2; s1 = func(l1)(sp + l2);
+callf               ls        LL        sp[0] = 0; s1 = func(l1)(sp);
+callfi              lls       LLL       sp[0] = l2; sp[1] = 1; s1 = func(l1)(sp + 1);
+callfii             llls      LLLL      sp[0] = l3; sp[1] = l2; sp[2] = 2; s1 = func(l1)(sp + 2);
+callfiii            lllls     LLLLL     sp[0] = l4; sp[1] = l3; sp[2] = l2; sp[3] = 3; s1 = func(l1)(sp + 3);
 
 ret                 l         L         return l1;
 tailcall            ll        LL        *sp = l2; return func(l1)(sp);
@@ -86,7 +86,7 @@ setiosys            ll        LL        native_setiosys(l1, l2);
 streamchar          l         L         native_streamchar(l1);
 streamunichar       l         l         native_streamunichar(l1);
 streamnum           l         l         native_streamnum(l1);
-streamstr           l         L         native_streamstr(l1);
+streamstr           l         L         native_streamstr(l1, sp);
 getstringtbl        s         L         s1 = native_getstringtbl();
 setstringtbl        l         L         native_setstringtbl(l1);
 

@@ -30,25 +30,11 @@ I've found some nice unittests on zarfs homepage. I don't expect to support
 everything in this package, but at least here is a list of tests that fail:
 
 glulxercise:
-operand         passed
-arith           passed
-bitwise         passed
-shift           passed
-trunc           passed (was: 2 failures related to aliasing)
-extend          passed
-aload           passed
-astore          passed (was: 5 tests failed related to aliasing)
-arraybit        passed
-call            passed
-callstack       passed
-jump            2 tests failed (jumpabs not supported)
-jumpform        20 tests failed (indirect jump not supported)
-compare         passed
-stack           passed
-strings         !crash!
-iosys           !crash!
-filter          !crash!
-nullio          !crash!
+- 29 tests failed overall: jump (2), jumpform (20), iosys (7).
+- failing "jump" are due to jumpabs not being supported
+- failing "jumpform" are due to jump to indirect offset not being supported
+- failing "iosys": reasons unknown
+- all "filter" tests pass, even though filter subsystem is not supported?!
 
 memcopytest:
-seems to work OK (no specific test cases given)
+- seems to work OK (no specific test cases given)

@@ -5,7 +5,8 @@ LDLIBS=cheapglk/libcheapglk.a
 
 STORYFILE_CFLAGS=$(CFLAGS) -Wno-unused-variable -fno-unit-at-a-time
 
-OBJS=messages.o native.o storyfile.o glkop.o glulxe.o main.o binary_storyfile.o
+OBJS=binary_storyfile.o glkop.o main.o messages.o native.o native_io.o \
+     native_search.o storyfile.o
 
 all: story
 
