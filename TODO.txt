@@ -1,45 +1,21 @@
-glxd:
- - maybe later: decode encoded strings, so they can be emitted as functions?
-   (probably only increases the code size for little good reason; string
-   decoding is fast enough as it is, and isn't usually a bottleneck; we can
-   decode faster than the player can read!)
-
-glulx-to-c:
-    - support for blorb file
+general:
+   - rethink calling conventions (to speed up direct calls)?
 
 native:
-    - support for blorb file instead of ulx (link this into file)
-    - support for filter subsystem?
-    - allow configurable max. string table size
+   - support for loading/saving of gamestate (undo/save/restore/etc.)
+   - maybe: support for native accellerated functions?
+            (this might not be necessary; need to check generated code,
+             and test performance impact of making function table non-const)
+   - maybe: support for filter subsystem?
 
 glulx-to-llvm:
     - write this! could be interesting.
 
+glulx-to-c:
+   + works OK
+
+glulxd:
+    + works OK
 
 opcode-map:
-    - now complete (though not all opcodes are implemented in a meaningful way)
-
-native:
- - support for blorb
- - maybe: support for native accellerated functions?
-          (this might not be necessary; need to check generated code)
- - platform specific error reporting (file not found in message box
-   on Windows and such)
- - windows: verify htonl etc. use bswap
-
-
-Later optimizations in C code generation:
- - convert use of stack to use of local variables
-   e.g.
-    copy 6, stk()
-    copy 7, stk()
-    call(2, stk(), stk())
-   becomes
-    int x = 6;
-    int y = 7;
-    call(2, x, y);
-   this should at least avoid a lot of writes to the (global) stack
- - alternatively, make stack local (with alloca)?
-   (need to test if the compiler is then able to elide writes)
- - resolve constant function addresses at compile-time
-   (need to test if this isn't done already with the current func_map)
+    + now complete (though not all opcodes are implemented in a meaningful way)

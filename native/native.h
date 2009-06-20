@@ -6,9 +6,9 @@
 #include "memaccess.h"
 
 /* Interpreter version (major.minor.revis) */
-#define NATIVE_VERSION_MAJOR (0)
-#define NATIVE_VERSION_MINOR (1)
-#define NATIVE_VERSION_REVIS (0)
+#define NATIVE_VERSION_MAJOR 0
+#define NATIVE_VERSION_MINOR 1
+#define NATIVE_VERSION_REVIS 0
 
 void native_accelfunc(uint32_t l1, uint32_t l2);
 void native_accelparam(uint32_t l1, uint32_t l2);
@@ -32,8 +32,9 @@ uint32_t native_malloc(uint32_t size);
 void native_mfree(uint32_t offset);
 void native_protect(uint32_t offset, uint32_t size);
 void native_quit();
-void native_reset_memory(const uint8_t *storydata);
 int32_t native_random(int32_t range);
+void native_reset();
+void native_start();
 void native_restart();
 uint32_t native_restore(uint32_t stream);
 uint32_t native_restoreundo();

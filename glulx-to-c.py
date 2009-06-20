@@ -54,6 +54,7 @@ def main(path = None):
         data = file(path, 'rb').read()
     else:
         data = sys.stdin.read()
+    data = glulxd.unwrap(data)
 
     ops = glulxd.disassemble(data)
     header = ops[0]

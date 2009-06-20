@@ -37,3 +37,23 @@ def unsigned_size(i):
     if i <= 0xffff: return 2
     if i <= 0xffffffff: return 4
     assert 0
+
+def unwrap(data):
+    'Unwrap Glulx data file from Blorb file'
+
+    if data[0:4] == 'Glul':
+        return data  # Bare glulx file
+
+    if data[0:4] == 'FORM' and data[8:16] == 'IFRSRIdx':
+        # Blorb wrapper
+        entries = unpack(data, 20, 4)
+        offset = 24
+        for n in range(entries):
+            if data[offset:offset+8] == 'Exec\0\0\0\0':
+                pos = unpack(data, offset + 8, 4)
+                if data[pos:pos+4] == 'GLUL' and data[pos+8:pos+12] == 'Glul':
+                    return data[pos+8:pos+8+unpack(data, pos + 4, 4)]
+        return None
+
+    # No supported wrapper found
+    return None

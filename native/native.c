@@ -141,10 +141,36 @@ int32_t native_random(int32_t range)
     return roll;
 }
 
-void native_reset_memory(const uint8_t *storydata)
+void native_reset()
 {
-    memcpy(mem, storydata, init_extstart);
-    memset(mem + init_extstart, 0, init_endmem - init_extstart);
+    extern const uint8_t *glulx_data;
+    extern size_t         glulx_size;
+
+    /* Copy initialized data section: */
+    if (glulx_size >= init_extstart)
+    {
+        memcpy(mem, glulx_data, init_extstart);
+        memset(mem + init_extstart, 0, init_endmem - init_extstart);
+    }
+    else /* glulx_size < init_extstart */
+    {
+        /* this shouldn't normally happen! */
+        error("story data is truncated");
+        memcpy(mem, glulx_data, glulx_size);
+        memset(mem + glulx_size, 0, init_endmem - glulx_size);
+    }
+
+    if (get_long(32) != init_checksum)
+        fatal("checksum mismatch between story data and story code");
+
+    /* Reset RNG */
+    native_setrandom(0);
+
+    /* Reset string decoding table */
+    native_setstringtbl(init_decoding_tbl);
+
+    /* Clear stack (not really necessary, though nice for debugging) */
+    memset(stack, 0, init_stack_size);
 }
 
 void native_restart()
@@ -177,6 +203,12 @@ uint32_t native_saveundo()
 {
     /* not implemented */
     return 1; /* indicates failure! */
+}
+
+void native_start()
+{
+    stack[0] = 0;
+    func(init_start_func)(&stack[0]);
 }
 
 uint32_t native_setmemsize(uint32_t new_size)

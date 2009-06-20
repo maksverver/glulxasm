@@ -1,5 +1,7 @@
-Contains some code from Glulxle (glkop.c) and Glk (gi_blorb.c) written by
-Andrew Plotkin. See: http://eblong.com/zarf/{glulx,glk}/
+Contains code from Glulxle (glkop.c) and Glk (gi_blorb.c) written by:
+  Andrew Plotkin <erkyrath@eblong.com>
+  http://eblong.com/zarf/glulx/index.html
+  http://eblong.com/zarf/glk/index.html
 
 -- 
 
@@ -39,3 +41,4 @@ glulxercise:
 
 memcopytest:
 - seems to work OK (no specific test cases given)
+

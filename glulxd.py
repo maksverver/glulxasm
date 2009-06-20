@@ -212,6 +212,7 @@ if __name__ == '__main__':
         data = file(sys.argv[1], 'rb').read()
     else:
         data = sys.stdin.read()
+    data = unwrap(data)
 
     ops = disassemble(data)
     header = ops[0]

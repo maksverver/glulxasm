@@ -1,0 +1,31 @@
+SAVE GAME FORMAT
+
+The execution system uses an incompatible file format to store saved games,
+which is not interoperable with any other system.
+
+TECHNICAL INFORMATION
+
+The save game file format mostly follows the Glulx/Quetzal format, including
+compatible IFhd and CMem/UMem chunks. However, instead of the standard Stks
+chunk to store the Glulx stack, an unportable stack chunk is included that
+stores the game state for a particular version of the game on a particular
+platform (i.e. this is not interoperable with anything else):
+
+Preliminary chunk format:
+
+    4 bytes: "XStk"
+    4 bytes: remaining length of the chunk (at least 32 bytes)
+
+   16 bytes: binary identifier (platform dependent; e.g. hash code of storycode)
+
+    4 bytes: "call"
+    4 bytes: call stack size in bytes (multiple of 4)
+    X bytes: call stack data
+
+    4 bytes: "data"
+    4 bytes: data stack size in bytes (multiple of 4)
+    X bytes: data stack data
+
+  The format of all stack data is platform dependent. The 16 byte identifier is
+  used by the loader to verify that the native stack data is applicable to the
+  current platform and application.
