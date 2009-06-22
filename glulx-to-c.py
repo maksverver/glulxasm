@@ -72,7 +72,7 @@ def main(path = None):
         assert func_map[f.offset()/4] is None
         func_map[f.offset()/4] = f
 
-    print '#include "storyfile.h"'
+    print '#include "storycode.h"'
     print ''
     print '#define RAMSTART     ((uint32_t)%d)' % header.ramstart
     print '#define EXTSTART     ((uint32_t)%d)' % header.extstart
@@ -90,13 +90,17 @@ def main(path = None):
     print 'const uint32_t init_decoding_tbl = DECODING_TBL;'
     print 'const uint32_t init_checksum     = CHECKSUM;'
     print ''
+    print 'uint8_t mem[ENDMEM];'
+    print 'uint32_t data_stack[STACK_SIZE/sizeof(uint32_t)];'
+    print 'char call_stack[STACK_SIZE];'
+    print 'struct Context *story_start;'
+    print 'struct Context *story_stop;'
+    print ''
 
     for f in functions:
         print 'uint32_t %s(uint32_t*);' % func_name(f)
     print ''
 
-    print 'uint8_t mem[ENDMEM];'
-    print 'uint32_t stack[STACK_SIZE/sizeof(uint32_t)];'
     print 'uint32_t (* const func_map[RAMSTART/4 + 1])(uint32_t*) = {'
     line = '\t'
     for i in range(0, header.ramstart/4):

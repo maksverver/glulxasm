@@ -1,7 +1,7 @@
 #include "native.h"
 #include "inline.h"
 #include "messages.h"
-#include "storyfile.h"
+#include "storycode.h"
 #include "glkop.h"  /* for glk_exit() */
 #include <assert.h>
 #include <malloc.h>
@@ -9,10 +9,19 @@
 #include <string.h>
 #include <time.h>
 
+#define STORY_SIGNAL_RESTART  ((void*)1)
+#define STORY_SIGNAL_QUIT     ((void*)2)
+#define STORY_SIGNAL_UNDO     ((void*)3)
+
 static uint32_t cur_protect_offset  = 0;
 static uint32_t cur_protect_size    = 0;
 static uint32_t cur_rng_base        = 0;
 static uint32_t cur_rng_carry       = 0;
+
+/* Defined in native_state */
+char *native_serialize(uint32_t *data_sp, char *call_sp, size_t *size);
+bool native_deserialize(char *data, size_t size);
+
 
 void native_accelfunc(uint32_t l1, uint32_t l2)
 {
@@ -30,7 +39,9 @@ void native_accelparam(uint32_t l1, uint32_t l2)
 
 void native_debugtrap(uint32_t argument)
 {
-    (void)argument;
+    /* Ensure argument is stored somewhere: */
+    static volatile uint32_t debug_arg;
+    debug_arg = argument;
     abort();
 }
 
@@ -54,7 +65,7 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
         return 0;  /* cannot resize memory */
 
     case 3:  /* Undo */
-        return 0;  /* FIXME: cannot undo */
+        return 1;
 
     case 4:  /* IOSystem */
         switch (argument)
@@ -103,14 +114,14 @@ void native_invalidop(uint32_t offset, const char *descr)
 
 uint32_t native_malloc(uint32_t size)
 {
-    /* not implemented */
+    /* intentionally not implemented */
     (void)size;
     return 0;
 }
 
 void native_mfree(uint32_t offset)
 {
-    /* not implemented */
+    /* intentionally not implemented */
     (void)offset;
 }
 
@@ -122,7 +133,8 @@ void native_protect(uint32_t offset, uint32_t size)
 
 void native_quit()
 {
-    glk_exit();
+    /* Signal quit */
+    context_restore(story_start, STORY_SIGNAL_QUIT);
 }
 
 static INLINE uint32_t rng_next()
@@ -170,13 +182,14 @@ void native_reset()
     native_setstringtbl(init_decoding_tbl);
 
     /* Clear stack (not really necessary, though nice for debugging) */
-    memset(stack, 0, init_stack_size);
+    memset(data_stack, 0, init_stack_size);
+    memset(call_stack, 0, init_stack_size);
 }
 
 void native_restart()
 {
-    /* not implemented */
-    error("restart not supported");
+    /* Signal restart */
+    context_restore(story_start, STORY_SIGNAL_RESTART);
 }
 
 uint32_t native_restore(uint32_t stream)
@@ -192,35 +205,82 @@ uint32_t native_restoreundo()
     return 1; /* indicates failure! */
 }
 
-uint32_t native_save(uint32_t stream)
+uint32_t native_save(uint32_t stream, uint32_t *data_sp, char *call_sp)
 {
-    /* not implemented */
-    (void)stream;
+    /* TODO */
+    assert(0);
     return 1; /* indicates failure! */
 }
 
-uint32_t native_saveundo()
+uint32_t native_saveundo(uint32_t *data_sp, char *call_sp)
 {
-    /* not implemented */
-    return 1; /* indicates failure! */
+    size_t size;
+    char *data;
+
+    data = native_serialize(data_sp, call_sp, &size);
+    if (data == NULL) return 1;  /* failure */
+
+    /* TODO: add to undo-list of saved states */
+    return 0;
+}
+
+/* TODO: move this into storyfile.c so it is linked in the same code segment */
+static void *start(void *arg)
+{
+    void *res;
+    (void)arg;  /* unused */
+    story_start = alloca(sizeof(struct Context));
+    res = context_save(story_start);
+    if (res == NULL)
+    {
+        /* Invoke start function */
+        data_stack[0] = 0;
+        func(init_start_func)(&data_stack[0]);
+    }
+    return res;
 }
 
 void native_start()
 {
-    stack[0] = 0;
-    func(init_start_func)(&stack[0]);
+    void *sig = STORY_SIGNAL_RESTART;
+    for (;;)
+    {
+        switch ((int)sig)
+        {
+        case 0:
+        case (int)STORY_SIGNAL_QUIT:
+            return;
+
+        default:
+            fatal("Unknown signal (%d) received in start stub", (int)sig);
+            return;
+
+        case (int)STORY_SIGNAL_RESTART:
+            native_reset();
+            sig = context_start(call_stack, init_stack_size, start, NULL);
+            break;
+
+        case (int)STORY_SIGNAL_UNDO:
+            /* pop element from undo stack, copy over memory.
+               NOTE: must respect protected memory area! */
+            assert(0); /* TODO! */
+            sig = context_restart(story_stop, (void*)-1, call_stack, init_stack_size);
+            break;
+
+        }
+    }
 }
 
 uint32_t native_setmemsize(uint32_t new_size)
 {
-    /* not implemented */
+    /* intentionally not implemented */
     (void)new_size;
-    return 1; /* indicates failure! */
+    return 1; /* indicate failure */
 }
 
 void native_setrandom(uint32_t seed)
 {
-    cur_rng_base  = (seed != 0) ? seed : time(NULL);
+    cur_rng_base  = (seed != 0) ? seed : (uint32_t)time(NULL);
     cur_rng_carry = 0;
 }
 
@@ -252,5 +312,5 @@ void native_stkroll(uint32_t size, int32_t steps, uint32_t *sp)
 uint32_t native_verify()
 {
     /* no need to do anything; game was verified on start */
-    return 0;  /* indicate successs */
+    return 0;  /* indicate success */
 }

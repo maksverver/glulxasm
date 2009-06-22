@@ -1,6 +1,6 @@
 #include "native.h"
 #include "inline.h"
-#include "storyfile.h"
+#include "storycode.h"
 #include "messages.h"
 #include "glkop.h"
 #include <assert.h>

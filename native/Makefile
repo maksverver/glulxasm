@@ -1,21 +1,28 @@
 # For cheapglk:
-GLKLIBS=cheapglk/libcheapglk.a
-GLKINC=cheapglk/
+#GLKLIBS=cheapglk/libcheapglk.a
+#GLKINC=cheapglk/
 
 # For Gargoyle GLK:
 #GLKLIBS=garglk/libgarglkmain.a garglk/libgarglk.so
 #GLKINC=garglk/
 
+# 32-bit build:
+GLKLIBS=cheapglk32/libcheapglk.a
+GLKINC=cheapglk32/
+
 # Note: for x86, should probably add -march=i686
-CFLAGS=-Wall -Wextra -O2 -I$(GLKINC) -Imxml/ -g
+CFLAGS=-Wall -Wextra -O2 -I$(GLKINC) -Imxml/ -g -m32 -march=i686
 LDLIBS=$(GLKLIBS) mxml/libmxml.a
 
 STORYFILE_CFLAGS=$(CFLAGS) -Wno-unused-variable -fno-unit-at-a-time
 
 OBJS=glkop.o main.o messages.o native.o native_io.o native_search.o \
-     storycode.o
+     native_state.o storycode.o context.o
 
 all: story
+
+context.o: context_i386.s
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 storycode.c: storyfile.dat
 	(cd .. && ./glulx-to-c.py) <storyfile.dat >storycode.c

@@ -1,5 +1,9 @@
 # The table below is used by glulx-to-c.py to generated C code.
 
+# Note: in PARAMETERS, l/s/b means load/store/branch respectively.
+#       in SIZES, l/s/b measn signed long/short/byte respectively (and L/S/B are
+#       the unsigned equivalents). This is terribly confusing.
+
 # mnemonic          parameters sizes    code
 
 add                 lls       LLL       s1 = l1 + l2;
@@ -62,8 +66,8 @@ callfiii            lllls     LLLLL     sp[0] = l4; sp[1] = l3; sp[2] = l2; sp[3
 ret                 l         L         return l1;
 tailcall            ll        LL        *sp = l2; return func(l1)(sp);
 
-catch               sl        LL        -
-throw               ll        LL        -
+catch               sb        Lx        (void)s1; b1;  /* not implemented yet */
+throw               ll        LL        -              /* not implemented yet */
 
 getmemsize          s         L         s1 = native_getmemsize();
 setmemsize          ls        LL        s1 = native_setmemsize(l1);
@@ -73,9 +77,9 @@ mfree               l         L         native_mfree(l1);
 
 quit                -         -         native_quit();
 restart             -         -         native_restart();
-save                ls        LL        s1 = native_save(l1);
+save                ls        Ll        story_stop = alloca(sizeof(struct Context)); s1 = (int32_t)context_save(story_stop); if (s1 == 0) s1 = native_save(l1, sp, context_sp());
 restore             ls        LL        s1 = native_restore(l1);
-saveundo            s         L         s1 = native_saveundo();
+saveundo            s         L         story_stop = alloca(sizeof(struct Context)); s1 = (int32_t)context_save(story_stop); if (s1 == 0) s1 = native_saveundo(sp, context_sp());
 restoreundo         s         L         s1 = native_restoreundo();
 protect             ll        LL        native_protect(l1, l2);
 verify              s         L         s1 = native_verify();

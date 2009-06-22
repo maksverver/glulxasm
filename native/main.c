@@ -233,12 +233,6 @@ int glkunix_startup_code(glkunix_startup_t *data)
 #endif
             return TRUE;
         }
-
-        if (err != giblorb_err_NotAMap)
-        {
-            fatal("couldn't set resource map (error code: %d)", (int)err);
-            return FALSE;
-        }
     }
 
     /* Alternatively, try to open as a bare Glulx file */
@@ -280,7 +274,6 @@ void glk_main()
     memset(call_stack, 0, init_stack_size);
 #endif
 
-    native_reset();
     native_start();
 
 #if 0 /* this is for later */

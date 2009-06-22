@@ -173,10 +173,10 @@ def disassemble(data):
     assert header.magic == MAGIC
     assert header.verify_checksum(data)
 
-    # Try to decode data
+    # Try to decode data (in ROM only!)
     offset = len(header)
     skipped = []
-    while offset < header.extstart:
+    while offset < header.ramstart:
 
         if ops[offset] is None:
             decode_function(data, offset, ops)
@@ -191,8 +191,8 @@ def disassemble(data):
                    offset - len(skipped) != len(header):
                     descr = ' '.join([ '%02x'%i for i in skipped[:10]])
                     if len(skipped) > 10: descr += '..'
-                    print >>sys.stderr, 'Warning: skipped %d bytes (%s) at ' + \
-                        'offset 0x%08x' % (len(skipped), descr, offset - len(skipped))
+                    print >>sys.stderr, ('Warning: skipped %d bytes (%s) at ' + 
+                        'offset 0x%08x') % (len(skipped), descr, offset - len(skipped))
                 skipped = []
             offset += len(ops[offset])
 
