@@ -38,12 +38,6 @@ static struct StringTableEntry
 /* Temporarily exported stack pointer (for use by GLK dispatch layer): */
 uint32_t **glk_stack_ptr = NULL;
 
-/* Defined in glulxe.c; reused here: */
-extern char *make_temp_string(glui32 addr);
-extern glui32 *make_temp_ustring(glui32 addr);
-extern void free_temp_string(char *str);
-extern void free_temp_ustring(glui32 *str);
-
 
 void native_getiosys(uint32_t *mode, uint32_t *rock)
 {
@@ -376,9 +370,9 @@ void native_streamunichar(uint32_t ch)
     glk_put_char_uni(ch);
 }
 
-glui32 *native_ustring_dup(uint32_t offset)
+uint32_t *native_ustring_dup(uint32_t offset)
 {
-    glui32 *res;
+    uint32_t *res;
     size_t n, length;
 
     /* Figure out length of string */

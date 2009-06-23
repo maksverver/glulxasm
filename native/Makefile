@@ -10,6 +10,7 @@
 GLKLIBS=cheapglk32/libcheapglk.a
 GLKINC=cheapglk32/
 
+CC=gcc
 # Note: for x86, should probably add -march=i686
 CFLAGS=-Wall -Wextra -O2 -I$(GLKINC) -Imxml/ -g -m32 -march=i686
 LDLIBS=$(GLKLIBS) mxml/libmxml.a
