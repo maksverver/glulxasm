@@ -77,9 +77,9 @@ mfree               l         L         native_mfree(l1);
 
 quit                -         -         native_quit();
 restart             -         -         native_restart();
-save                ls        Ll        story_stop = alloca(sizeof(struct Context)); s1 = (int32_t)context_save(story_stop); if (s1 == 0) s1 = native_save(l1, sp, context_sp());
+save                ls        Ll        struct Context ctx; story_stop = &ctx; s1 = (int32_t)context_save(story_stop); if (s1 == 0) s1 = native_save(l1, sp, context_sp());
 restore             ls        LL        s1 = native_restore(l1);
-saveundo            s         L         story_stop = alloca(sizeof(struct Context)); s1 = (int32_t)context_save(story_stop); if (s1 == 0) s1 = native_saveundo(sp, context_sp());
+saveundo            s         L         struct Context ctx; story_stop = &ctx; s1 = (int32_t)context_save(story_stop); if (s1 == 0) s1 = native_saveundo(sp, context_sp());
 restoreundo         s         L         s1 = native_restoreundo();
 protect             ll        LL        native_protect(l1, l2);
 verify              s         L         s1 = native_verify();

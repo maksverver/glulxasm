@@ -231,8 +231,10 @@ uint32_t native_saveundo(uint32_t *data_sp, char *call_sp)
 static void *start(void *arg)
 {
     void *res;
+    struct Context ctx;
+
     (void)arg;  /* unused */
-    story_start = alloca(sizeof(struct Context));
+    story_start = &ctx;
     res = context_save(story_start);
     if (res == NULL)
     {

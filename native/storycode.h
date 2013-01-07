@@ -3,7 +3,6 @@
 
 #include "native.h"
 #include "context.h"
-#include <malloc.h>  /* for alloca on Windows */
 
 /* Parameters from the Glulx header: */
 extern const uint32_t init_ramstart;
