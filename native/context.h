@@ -1,3 +1,6 @@
+#ifndef CONTEXT_H_INCLUDED
+#define CONTEXT_H_INCLUDED
+
 #if defined(__i386)
 struct Context
 {
@@ -33,4 +36,6 @@ void *context_save(struct Context *ptr);
 void context_restore(struct Context *ptr, void *arg);
 
 /* Retrieve the stack pointer in the current context */
-void *context_sp();
+void *context_sp();  /* FIXME: unused -- remove this? */
+
+#endif /* ndef CONTEXT_H_INCLUDED */

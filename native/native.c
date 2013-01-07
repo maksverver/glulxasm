@@ -17,9 +17,10 @@ static uint32_t cur_protect_offset  = 0;
 static uint32_t cur_protect_size    = 0;
 static uint32_t cur_rng_base        = 0;
 static uint32_t cur_rng_carry       = 0;
+static struct Context *story_start  = NULL;
 
 /* Defined in native_state */
-char *native_serialize(uint32_t *data_sp, char *call_sp, size_t *size);
+char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size);
 bool native_deserialize(char *data, size_t size);
 
 
@@ -208,19 +209,19 @@ uint32_t native_restoreundo()
     return 1; /* indicates failure! */
 }
 
-uint32_t native_save(uint32_t stream, uint32_t *data_sp, char *call_sp)
+uint32_t native_save(uint32_t stream, uint32_t *data_sp, struct Context *ctx)
 {
     /* TODO */
     assert(0);
     return 1; /* indicates failure! */
 }
 
-uint32_t native_saveundo(uint32_t *data_sp, char *call_sp)
+uint32_t native_saveundo(uint32_t *data_sp, struct Context *ctx)
 {
     size_t size;
     char *data;
 
-    data = native_serialize(data_sp, call_sp, &size);
+    data = native_serialize(data_sp, ctx, &size);
     if (data == NULL) return 1;  /* failure */
 
     /* TODO: add to undo-list of saved states */
@@ -256,10 +257,6 @@ void native_start()
         case (int)STORY_SIGNAL_QUIT:
             return;
 
-        default:
-            fatal("Unknown signal (%d) received in start stub", (int)sig);
-            return;
-
         case (int)STORY_SIGNAL_RESTART:
             native_reset();
             sig = context_start(call_stack, init_stack_size, start, NULL);
@@ -269,9 +266,12 @@ void native_start()
             /* pop element from undo stack, copy over memory.
                NOTE: must respect protected memory area! */
             assert(0); /* TODO! */
-            sig = context_restart(story_stop, (void*)-1, call_stack, init_stack_size);
+            /* sig = context_restart(story_stop, (void*)-1, call_stack, init_stack_size); */
             break;
 
+        default:
+            fatal("Unknown signal (%d) received in start stub", (int)sig);
+            return;
         }
     }
 }

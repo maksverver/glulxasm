@@ -4,12 +4,12 @@
 #include <assert.h>
 
 /* Serializes the story file state into a long string. */
-char *native_serialize(uint32_t *data_sp, char *call_sp, size_t *size)
+char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size)
 {
     size_t data_stack_size;
     size_t call_stack_size;
     size_t data_size;
-    char *data, *pos;
+    char *data, *pos, *call_sp = (char*)ctx->esp;
 
     data_stack_size = sizeof(*data_sp)*(data_sp - data_stack);
     call_stack_size = call_stack + init_stack_size - call_sp;
@@ -19,7 +19,7 @@ char *native_serialize(uint32_t *data_sp, char *call_sp, size_t *size)
     data_size += data_stack_size;               /* data stack */
     data_size += sizeof(size_t);                /* call stack size */
     data_size += call_stack_size;               /* call stack */
-    data_size += 2*sizeof(struct Context*);     /* start/stop points */
+    data_size += sizeof(ctx);                   /* execution context */
 
     data = pos = malloc(data_size);
     if (pos != NULL)
@@ -37,18 +37,15 @@ char *native_serialize(uint32_t *data_sp, char *call_sp, size_t *size)
         /* call stack */
         memcpy(pos, &call_stack_size, sizeof(call_stack_size));
         pos += sizeof(call_stack_size);
-        memcpy(pos, call_stack + init_stack_size - call_stack_size,
-                    call_stack_size);
+        memcpy(pos, call_sp, call_stack_size);
         pos += call_stack_size;
 
-        /* start point */
-        memcpy(pos, &story_start, sizeof(story_start));
-        pos += sizeof(story_start);
-
-        /* stop point */
-        memcpy(pos, &story_stop, sizeof(story_stop));
-        pos += sizeof(story_stop);
+        /* execution context (assumed to be stored on stack!) */
+        assert((size_t)((char*)ctx - call_sp) < call_stack_size);
+        memcpy(pos, &ctx, sizeof(ctx));
+        pos += sizeof(ctx);
     }
+    assert(pos == data + data_size);
     *size = data_size;
     return data;
 }

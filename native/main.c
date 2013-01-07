@@ -267,16 +267,5 @@ void glk_main()
 {
     if (!init_dispatch()) return;
 
-#if 0  /* this is for later */
-    /* Allocate the story call stack */
-    uint8_t *call_stack = malloc(init_stack_size);
-    if (call_stack == NULL) return;
-    memset(call_stack, 0, init_stack_size);
-#endif
-
     native_start();
-
-#if 0 /* this is for later */
-    free(call_stack);
-#endif
 }

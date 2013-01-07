@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "memaccess.h"
+#include "context.h"
 
 /* Interpreter version (major.minor.revis) */
 #define NATIVE_VERSION_MAJOR 0
@@ -38,8 +39,8 @@ void native_start();
 void native_restart();
 uint32_t native_restore(uint32_t stream);
 uint32_t native_restoreundo();
-uint32_t native_save(uint32_t stream, uint32_t *data_sp, char *call_sp);
-uint32_t native_saveundo(uint32_t *data_sp, char *call_sp);
+uint32_t native_save(uint32_t stream, uint32_t *data_sp, struct Context *ctx);
+uint32_t native_saveundo(uint32_t *data_sp, struct Context *ctx);
 uint32_t native_setmemsize(uint32_t new_size);
 void native_setiosys(uint32_t mode, uint32_t rock);
 void native_setrandom(uint32_t l1);

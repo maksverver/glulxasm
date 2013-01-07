@@ -93,8 +93,6 @@ def main(path = None):
     print 'uint8_t mem[ENDMEM];'
     print 'uint32_t data_stack[STACK_SIZE/sizeof(uint32_t)];'
     print 'char call_stack[STACK_SIZE];'
-    print 'struct Context *story_start;'
-    print 'struct Context *story_stop;'
     print ''
 
     for f in functions:
