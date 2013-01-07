@@ -1,20 +1,21 @@
 # For cheapglk:
 #GLKLIBS=cheapglk/libcheapglk.a
 #GLKINC=cheapglk/
+# 32-bit build:
+#GLKLIBS=cheapglk32/libcheapglk.a
+#GLKINC=cheapglk32/
 
 # For Gargoyle GLK:
-#GLKLIBS=garglk/libgarglkmain.a garglk/libgarglk.so
-#GLKINC=garglk/
+GLKLIBS=garglk/libgarglkmain.a garglk/libgarglk.so
+GLKINC=garglk/
 
-# 32-bit build:
-GLKLIBS=cheapglk32/libcheapglk.a
-GLKINC=cheapglk32/
-
-# Note: for x86, should probably add -march=i686
-CFLAGS=-Wall -Wextra -O2 -I$(GLKINC) -Imxml/ -g -m32 -march=i686
+CFLAGS=-Wall -Wextra -O2 -I$(GLKINC) -Imxml/ -g -m32 -march=i686 \
+	-DGARGLK
+LDFLAGS=-Wl,--rpath='$$ORIGIN/garglk/'
 LDLIBS=$(GLKLIBS) mxml/libmxml.a
 
-STORYFILE_CFLAGS=$(CFLAGS) -Wno-unused-variable -fno-unit-at-a-time
+STORYFILE_CFLAGS=$(CFLAGS) -fno-unit-at-a-time \
+	-Wno-unused-variable -Wno-unused-but-set-variable
 
 OBJS=glkop.o main.o messages.o native.o native_io.o native_search.o \
      native_state.o storycode.o context.o
@@ -35,7 +36,7 @@ storycode.o: storycode.c
 #	ld -m elf_x86_64 -r -b binary -o storydata.o storyfile.dat
 
 story: $(OBJS) $(GLKLIBS)
-	$(CC) $(CFLAGS) -o story $(OBJS) $(LDLIBS)
+	$(CC) $(CFLAGS) -o story $(OBJS) $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -f *.o

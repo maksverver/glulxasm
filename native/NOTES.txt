@@ -6,7 +6,6 @@ Contains code from Glulxle (glkop.c) and Glk (gi_blorb.c) written by:
 -- 
 
 Major missing features:
- - should load blorb at startup (for resources too)
  - saving/loading of game state in files
  - saving/loading of state for undoing
 

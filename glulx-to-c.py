@@ -74,13 +74,13 @@ def main(path = None):
 
     print '#include "storycode.h"'
     print ''
-    print '#define RAMSTART     ((uint32_t)%d)' % header.ramstart
-    print '#define EXTSTART     ((uint32_t)%d)' % header.extstart
-    print '#define ENDMEM       ((uint32_t)%d)' % header.endmem
-    print '#define STACK_SIZE   ((uint32_t)%d)' % header.stack_size
-    print '#define START_FUNC   ((uint32_t)%d)' % header.start_func
-    print '#define DECODING_TBL ((uint32_t)%d)' % header.decoding_tbl
-    print '#define CHECKSUM     ((uint32_t)%d)' % header.checksum
+    print '#define RAMSTART     ((uint32_t)%du)' % header.ramstart
+    print '#define EXTSTART     ((uint32_t)%du)' % header.extstart
+    print '#define ENDMEM       ((uint32_t)%du)' % header.endmem
+    print '#define STACK_SIZE   ((uint32_t)%du)' % header.stack_size
+    print '#define START_FUNC   ((uint32_t)%du)' % header.start_func
+    print '#define DECODING_TBL ((uint32_t)%du)' % header.decoding_tbl
+    print '#define CHECKSUM     ((uint32_t)%du)' % header.checksum
     print ''
     print 'const uint32_t init_ramstart     = RAMSTART;'
     print 'const uint32_t init_extstart     = EXTSTART;'
