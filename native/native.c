@@ -97,6 +97,9 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
             default: return 0;  /* unknown function */
         }
 
+    case 11: /* Float */
+        return 1;  /* floating point opcodes supported */
+
     default: /* unknown gestalt selector */
         return 0;
     }
