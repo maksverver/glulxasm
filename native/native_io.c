@@ -62,7 +62,7 @@ uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
 
     /* Copy arguments from stack to temporary buffer.
        (This is necessary since Glk may pop/push data on the stack too. */
-    args = alloca(sizeof(narg)*sizeof(uint32_t));
+    args = alloca(narg*sizeof(uint32_t));
     *sp -= narg;
     for (n = 0; n < narg; ++n)
         args[n] = (*sp)[narg - n - 1];
