@@ -1,7 +1,7 @@
 #include "native.h"
 #include "messages.h"
 #include "storycode.h"
-#include "glkop.h"  /* for glk_exit() */
+#include "glulxe.h"
 #include <assert.h>
 #include <malloc.h>
 #include <stdbool.h>
@@ -24,6 +24,7 @@ static struct Undo *undo = NULL;
 /* Defined in native_state */
 char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size);
 struct Context *native_deserialize(char *data, size_t size);
+void native_save_serialized(const char *data, size_t size, strid_t);
 
 
 void native_accelfunc(uint32_t l1, uint32_t l2)
@@ -174,13 +175,6 @@ void native_restart()
     context_restore(story_start, (void*)SIGNAL_RESTART);
 }
 
-uint32_t native_restore(uint32_t stream)
-{
-    /* not implemented */
-    (void)stream;
-    return 1; /* indicates failure! */
-}
-
 uint32_t native_restoreundo()
 {
     /* Signal undo */
@@ -189,11 +183,26 @@ uint32_t native_restoreundo()
     return 1; /* indicates failure! */
 }
 
-uint32_t native_save(uint32_t stream, uint32_t *data_sp, struct Context *ctx)
+uint32_t native_restore(uint32_t stream)
 {
-    /* TODO */
-    assert(0);
+    /* not implemented */
+    (void)stream;
     return 1; /* indicates failure! */
+}
+
+uint32_t native_save(uint32_t stream_id, uint32_t *data_sp, struct Context *ctx)
+{
+    strid_t stream;
+    size_t size;
+    char *data;
+
+    stream = find_stream_by_id(stream_id);
+    if (!stream) return 1;  /* indicates failure! */
+    data = native_serialize(data_sp, ctx, &size);
+    if (data == NULL) return 1;  /* indicates failure! */
+    native_save_serialized(data, size, stream);
+    free(data);
+    return 0;  /* indicates success */
 }
 
 uint32_t native_saveundo(uint32_t *data_sp, struct Context *ctx)
@@ -210,7 +219,8 @@ failed:
     return 1;
 }
 
-/* TODO: move this into storyfile.c so it is linked in the same code segment */
+/* TODO: move this into storyfile.c so it is linked in the same code segment?
+         (why did I want this?) */
 static void *start(void *arg)
 {
     void *res;

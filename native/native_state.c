@@ -1,10 +1,8 @@
 #include "native.h"
+#include "glk.h"
 #include "storycode.h"
 #include <stdbool.h>
 #include <assert.h>
-
-/* TODO: time how long this function takes, and see if compression makes it
-         much slower */
 
 static uint32_t cur_protect_offset  = 0;
 static uint32_t cur_protect_size    = 0;
@@ -73,8 +71,8 @@ char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size)
 struct Context *native_deserialize(char *data, size_t size)
 {
     struct Context *ctx;
-    size_t data_stack_size;
-    size_t call_stack_size;
+    uint32_t data_stack_size;
+    uint32_t call_stack_size;
     char *pos = data;
 
     if (cur_protect_offset < init_endmem && cur_protect_size > 0)
@@ -89,23 +87,60 @@ struct Context *native_deserialize(char *data, size_t size)
 
     /* data stack */
     memset(data_stack, 0, init_stack_size);  /* for debugging */
-    memcpy(&data_stack_size, pos, sizeof(data_stack_size));
-    pos += sizeof(data_stack_size);
+    memcpy(&data_stack_size, pos, sizeof data_stack_size);
+    pos += sizeof data_stack_size;
     memcpy(data_stack, pos, data_stack_size);
     pos += data_stack_size;
 
     /* call stack */
     memset(call_stack, 0, init_stack_size);  /* for debugging */
-    memcpy(&call_stack_size, pos, sizeof(call_stack_size));
-    pos += sizeof(call_stack_size);
+    memcpy(&call_stack_size, pos, sizeof call_stack_size);
+    pos += sizeof call_stack_size;
     memcpy(call_stack + init_stack_size - call_stack_size,
            pos, call_stack_size);
     pos += call_stack_size;
 
     /* execution context (assumed to be stored on stack!) */
-    memcpy(&ctx, pos, sizeof(ctx));
-    pos += sizeof(ctx);
+    memcpy(&ctx, pos, sizeof ctx);
+    pos += sizeof ctx;
 
     assert(pos == data + size);
     return ctx;
+}
+
+static void write_fourcc(strid_t stream, const char *fourcc)
+{
+    glk_put_char_stream(stream, fourcc[0]);
+    glk_put_char_stream(stream, fourcc[1]);
+    glk_put_char_stream(stream, fourcc[2]);
+    glk_put_char_stream(stream, fourcc[3]);
+}
+
+static void write_uint32(strid_t stream, uint32_t value)
+{
+    glk_put_char_stream(stream, value >> 24 & 0xff);
+    glk_put_char_stream(stream, value >> 16 & 0xff);
+    glk_put_char_stream(stream, value >>  8 & 0xff);
+    glk_put_char_stream(stream, value >>  0 & 0xff);
+}
+
+void native_save_serialized(const char *data, size_t size, strid_t stream)
+{
+    size_t ram_size = init_endmem - init_ramstart;
+
+    write_fourcc(stream, "FORM");
+    write_uint32(stream, size + 8*4 + 128);
+    write_fourcc(stream, "IFZS");
+    write_fourcc(stream, "IFhd");
+    write_uint32(stream, 128);
+    glk_put_buffer_stream(stream, (char*)mem, 128);
+    write_fourcc(stream, "UMem");
+    write_uint32(stream, 4 + ram_size);
+    write_uint32(stream, ram_size);
+    glk_put_buffer_stream(stream, (char*)data, ram_size);
+    data += ram_size;
+    size -= ram_size;
+    write_fourcc(stream, "XStk");
+    write_uint32(stream, size);
+    glk_put_buffer_stream(stream, (char*)data, size);
 }
