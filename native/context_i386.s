@@ -42,14 +42,14 @@ context_restart:
     pushl   %ebp
     movl    %esp, %ebp
 
-    movl    16(%ebp), %eax      # eax = stack
-    addl    20(%ebp), %eax      # eax += size
+    movl     8(%ebp), %eax      # eax = stack
+    addl    12(%ebp), %eax      # eax += size
 
     movl    %esp, -4(%eax)      # set return SP
     movl    $return_from_context, -12(%eax)     # set return IP
 
-    pushl   12(%ebp)            # context ptr
-    pushl    8(%ebp)            # arg
+    pushl   20(%ebp)            # arg
+    pushl   16(%ebp)            # context ptr
     call    context_restore     # (does not return)
 
     int     $3                  # we should never get here!

@@ -25,7 +25,7 @@ void *context_start(void *stack, size_t size, void *(*main)(void*), void *arg);
     what context_restore does, but also changes the return address for the main
     function so that control transfers back to the caller of context_restart()
     when the main function returns. */
-void *context_restart(struct Context *ptr, void *arg, void *stack, size_t size);
+void *context_restart(void *stack, size_t size, struct Context *ptr, void *arg);
 
 /* Saves the execution context in *ptr and returns NULL if returning directly,
    or when restoring the context, the argument passed to context_restore(). */
@@ -36,6 +36,7 @@ void *context_save(struct Context *ptr);
 void context_restore(struct Context *ptr, void *arg);
 
 /* Retrieve the stack pointer in the current context */
-void *context_sp();  /* FIXME: unused -- remove this? */
+void *context_sp();
+/* FIXME: unused -- remove this? */
 
 #endif /* ndef CONTEXT_H_INCLUDED */

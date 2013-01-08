@@ -3,16 +3,36 @@
 #include <stdbool.h>
 #include <assert.h>
 
+/* TODO: time how long this function takes, and see if compression makes it
+         much slower */
+
+static uint32_t cur_protect_offset  = 0;
+static uint32_t cur_protect_size    = 0;
+
+void native_protect(uint32_t offset, uint32_t size)
+{
+    cur_protect_offset = offset;
+    cur_protect_size   = size;
+}
+
 /* Serializes the story file state into a long string. */
 char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size)
 {
+    const char *call_sp  = (char*)ctx->esp,
+               *stack_end = call_stack + init_stack_size;
     size_t data_stack_size;
     size_t call_stack_size;
     size_t data_size;
-    char *data, *pos, *call_sp = (char*)ctx->esp;
+    char *data, *pos;
+
+    /* Verify stack pointer is valid: */
+    assert(call_sp >= call_stack && call_sp < stack_end);
+
+    /* Verify context structure is on the stack: */
+    assert((char*)ctx >= call_sp && (char*)(ctx + 1) <= stack_end);
 
     data_stack_size = sizeof(*data_sp)*(data_sp - data_stack);
-    call_stack_size = call_stack + init_stack_size - call_sp;
+    call_stack_size = stack_end - call_sp;
 
     data_size = init_endmem - init_ramstart;    /* interpreter memory */
     data_size += sizeof(size_t);                /* data stack size */
@@ -22,38 +42,70 @@ char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size)
     data_size += sizeof(ctx);                   /* execution context */
 
     data = pos = malloc(data_size);
-    if (pos != NULL)
-    {
-        /* interpreter memory */
-        memcpy(pos, &mem[init_ramstart], init_endmem - init_ramstart);
-        pos += init_endmem - init_ramstart;
+    if (pos == NULL) return NULL;
 
-        /* data stack */
-        memcpy(pos, &data_stack_size, sizeof(data_stack_size));
-        pos += sizeof(data_stack_size);
-        memcpy(pos, data_stack, data_stack_size);
-        pos += data_stack_size;
+    /* interpreter memory */
+    memcpy(pos, mem + init_ramstart, init_endmem - init_ramstart);
+    pos += init_endmem - init_ramstart;
 
-        /* call stack */
-        memcpy(pos, &call_stack_size, sizeof(call_stack_size));
-        pos += sizeof(call_stack_size);
-        memcpy(pos, call_sp, call_stack_size);
-        pos += call_stack_size;
+    /* data stack */
+    memcpy(pos, &data_stack_size, sizeof(data_stack_size));
+    pos += sizeof(data_stack_size);
+    memcpy(pos, data_stack, data_stack_size);
+    pos += data_stack_size;
 
-        /* execution context (assumed to be stored on stack!) */
-        assert((size_t)((char*)ctx - call_sp) < call_stack_size);
-        memcpy(pos, &ctx, sizeof(ctx));
-        pos += sizeof(ctx);
-    }
+    /* call stack */
+    memcpy(pos, &call_stack_size, sizeof(call_stack_size));
+    pos += sizeof(call_stack_size);
+    memcpy(pos, call_sp, call_stack_size);
+    pos += call_stack_size;
+
+    /* execution context */
+    memcpy(pos, &ctx, sizeof(ctx));
+    pos += sizeof(ctx);
+
     assert(pos == data + data_size);
     *size = data_size;
     return data;
 }
 
 /* Deserialize stored state */
-bool native_deserialize(char *data, size_t size)
+struct Context *native_deserialize(char *data, size_t size)
 {
-    (void)data;
-    (void)size;
-    assert(0); /* TODO */
+    struct Context *ctx;
+    size_t data_stack_size;
+    size_t call_stack_size;
+    char *pos = data;
+
+    if (cur_protect_offset < init_endmem && cur_protect_size > 0)
+    {
+        /* Protected memory range not implemented yet! */
+        assert(0);
+    }
+
+    /* interpreter memory */
+    memcpy(mem + init_ramstart, pos, init_endmem - init_ramstart);
+    pos += init_endmem - init_ramstart;
+
+    /* data stack */
+    memset(data_stack, 0, init_stack_size);  /* for debugging */
+    memcpy(&data_stack_size, pos, sizeof(data_stack_size));
+    pos += sizeof(data_stack_size);
+    memcpy(data_stack, pos, data_stack_size);
+    pos += data_stack_size;
+
+    /* call stack */
+    memset(call_stack, 0, init_stack_size);  /* for debugging */
+    memcpy(&call_stack_size, pos, sizeof(call_stack_size));
+    pos += sizeof(call_stack_size);
+    memcpy(call_stack + init_stack_size - call_stack_size,
+           pos, call_stack_size);
+    pos += call_stack_size;
+
+    /* execution context (assumed to be stored on stack!) */
+    memcpy(&ctx, pos, sizeof(ctx));
+    pos += sizeof(ctx);
+
+    assert(pos == data + size);
+    return ctx;
 }

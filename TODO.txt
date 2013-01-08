@@ -1,8 +1,13 @@
+ - support for compression of interpreter memory
+   (for saving, and also for undoing?)
+ - support for saving
+ - support for restoring
+
 general:
    - rethink calling conventions (to speed up direct calls)?
 
 native:
-   - support for loading/saving of gamestate (undo/save/restore/etc.)
+   - implement either limited undo history, or compress history, or both.
    - maybe: support for native accellerated functions?
             (this might not be necessary; need to check generated code,
              and test performance impact of making function table non-const)

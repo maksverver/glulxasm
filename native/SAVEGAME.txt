@@ -18,13 +18,14 @@ Preliminary chunk format:
 
    16 bytes: binary identifier (platform dependent; e.g. hash code of storycode)
 
-    4 bytes: "call"
+    4 bytes: data stack size in bytes (multiple of 4)
+    X bytes: data stack data
+
     4 bytes: call stack size in bytes (multiple of 4)
     X bytes: call stack data
 
-    4 bytes: "data"
-    4 bytes: data stack size in bytes (multiple of 4)
-    X bytes: data stack data
+    4 bytes: pointer to execution stack
+
 
   The format of all stack data is platform dependent. The 16 byte identifier is
   used by the loader to verify that the native stack data is applicable to the

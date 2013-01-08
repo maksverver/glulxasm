@@ -1,5 +1,4 @@
 #include "native.h"
-#include "inline.h"
 #include "messages.h"
 #include "storycode.h"
 #include "glkop.h"  /* for glk_exit() */
@@ -7,21 +6,24 @@
 #include <malloc.h>
 #include <stdbool.h>
 #include <string.h>
-#include <time.h>
 
-#define STORY_SIGNAL_RESTART  ((void*)1)
-#define STORY_SIGNAL_QUIT     ((void*)2)
-#define STORY_SIGNAL_UNDO     ((void*)3)
+enum StorySignal {
+    SIGNAL_RESTART = 1,
+    SIGNAL_QUIT    = 2,
+    SIGNAL_UNDO    = 3 };
 
-static uint32_t cur_protect_offset  = 0;
-static uint32_t cur_protect_size    = 0;
-static uint32_t cur_rng_base        = 0;
-static uint32_t cur_rng_carry       = 0;
+struct Undo {
+    struct Undo *previous;
+    char *data;
+    size_t size;
+};
+
 static struct Context *story_start  = NULL;
+static struct Undo *undo = NULL;
 
 /* Defined in native_state */
 char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size);
-bool native_deserialize(char *data, size_t size);
+struct Context *native_deserialize(char *data, size_t size);
 
 
 void native_accelfunc(uint32_t l1, uint32_t l2)
@@ -38,10 +40,11 @@ void native_accelparam(uint32_t l1, uint32_t l2)
     (void)l2;
 }
 
+volatile uint32_t debug_arg;
+
 void native_debugtrap(uint32_t argument)
 {
     /* Ensure argument is stored somewhere: */
-    static volatile uint32_t debug_arg;
     debug_arg = argument;
     abort();
 }
@@ -129,32 +132,10 @@ void native_mfree(uint32_t offset)
     (void)offset;
 }
 
-void native_protect(uint32_t offset, uint32_t size)
-{
-    cur_protect_offset = offset;
-    cur_protect_size   = size;
-}
-
 void native_quit()
 {
     /* Signal quit */
-    context_restore(story_start, STORY_SIGNAL_QUIT);
-}
-
-static INLINE uint32_t rng_next()
-{
-    uint64_t tmp = 1554115554ull*cur_rng_base + cur_rng_carry;
-    cur_rng_base  = tmp;
-    cur_rng_carry = tmp >> 32;
-    return cur_rng_base;
-}
-
-int32_t native_random(int32_t range)
-{
-    uint32_t roll = rng_next();
-    if (range > 0) return +(int32_t)(roll%(uint32_t)+range);
-    if (range < 0) return -(int32_t)(roll%(uint32_t)-range);
-    return roll;
+    context_restore(story_start, (void*)SIGNAL_QUIT);
 }
 
 void native_reset()
@@ -179,9 +160,6 @@ void native_reset()
     if (get_long(32) != init_checksum)
         fatal("checksum mismatch between story data and story code");
 
-    /* Reset RNG */
-    native_setrandom(0);
-
     /* Reset string decoding table */
     native_setstringtbl(init_decoding_tbl);
 
@@ -193,7 +171,7 @@ void native_reset()
 void native_restart()
 {
     /* Signal restart */
-    context_restore(story_start, STORY_SIGNAL_RESTART);
+    context_restore(story_start, (void*)SIGNAL_RESTART);
 }
 
 uint32_t native_restore(uint32_t stream)
@@ -205,7 +183,9 @@ uint32_t native_restore(uint32_t stream)
 
 uint32_t native_restoreundo()
 {
-    /* not implemented */
+    /* Signal undo */
+    if (undo == NULL) return 1;  /* error: no undo data available */
+    context_restore(story_start, (void*)SIGNAL_UNDO);  /* should not return */
     return 1; /* indicates failure! */
 }
 
@@ -218,14 +198,16 @@ uint32_t native_save(uint32_t stream, uint32_t *data_sp, struct Context *ctx)
 
 uint32_t native_saveundo(uint32_t *data_sp, struct Context *ctx)
 {
-    size_t size;
-    char *data;
-
-    data = native_serialize(data_sp, ctx, &size);
-    if (data == NULL) return 1;  /* failure */
-
-    /* TODO: add to undo-list of saved states */
+    struct Undo *entry = malloc(sizeof *entry);
+    if (entry == NULL) goto failed;
+    entry->previous = undo;
+    entry->data = native_serialize(data_sp, ctx, &entry->size);
+    if (entry->data == NULL) goto failed;
+    undo = entry;
     return 0;
+failed:
+    if (entry != NULL) free(entry);
+    return 1;
 }
 
 /* TODO: move this into storyfile.c so it is linked in the same code segment */
@@ -246,31 +228,43 @@ static void *start(void *arg)
     return res;
 }
 
+static int pop_undo_state()
+{
+    struct Context *ctx;
+    struct Undo *u = undo;
+
+    assert(u != NULL);
+    native_reset();
+    ctx = native_deserialize(u->data, u->size);
+    assert(ctx != NULL);
+    undo = u->previous;
+    free(u->data);
+    free(u);
+    return (int)context_restart(call_stack, init_stack_size, ctx, (void*)-1);
+}
+
 void native_start()
 {
-    void *sig = STORY_SIGNAL_RESTART;
+    int sig = SIGNAL_RESTART;
     for (;;)
     {
-        switch ((int)sig)
+        switch (sig)
         {
         case 0:
-        case (int)STORY_SIGNAL_QUIT:
+        case SIGNAL_QUIT:
             return;
 
-        case (int)STORY_SIGNAL_RESTART:
+        case SIGNAL_RESTART:
             native_reset();
-            sig = context_start(call_stack, init_stack_size, start, NULL);
+            sig = (int)context_start(call_stack, init_stack_size, start, NULL);
             break;
 
-        case (int)STORY_SIGNAL_UNDO:
-            /* pop element from undo stack, copy over memory.
-               NOTE: must respect protected memory area! */
-            assert(0); /* TODO! */
-            /* sig = context_restart(story_stop, (void*)-1, call_stack, init_stack_size); */
+        case SIGNAL_UNDO:
+            sig = pop_undo_state();
             break;
 
         default:
-            fatal("Unknown signal (%d) received in start stub", (int)sig);
+            fatal("Unknown signal (%d) received in start stub", sig);
             return;
         }
     }
@@ -281,12 +275,6 @@ uint32_t native_setmemsize(uint32_t new_size)
     /* intentionally not implemented */
     (void)new_size;
     return 1; /* indicate failure */
-}
-
-void native_setrandom(uint32_t seed)
-{
-    cur_rng_base  = (seed != 0) ? seed : (uint32_t)time(NULL);
-    cur_rng_carry = 0;
 }
 
 void native_stkroll(uint32_t size, int32_t steps, uint32_t *sp)
