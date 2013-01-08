@@ -126,7 +126,7 @@ static void write_uint32(strid_t stream, uint32_t value)
 
 void native_save_serialized(const char *data, size_t size, strid_t stream)
 {
-    size_t ram_size = init_endmem - init_ramstart;
+    const size_t ram_size = init_endmem - init_ramstart;
 
     write_fourcc(stream, "FORM");
     write_uint32(stream, size + 8*4 + 128);
@@ -143,4 +143,57 @@ void native_save_serialized(const char *data, size_t size, strid_t stream)
     write_fourcc(stream, "XStk");
     write_uint32(stream, size);
     glk_put_buffer_stream(stream, (char*)data, size);
+}
+
+static uint32_t get_uint32(char buf[4])
+{
+    unsigned char *p = (unsigned char*)buf;
+    return p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3];
+}
+
+char *native_restore_serialized(strid_t stream, size_t *size_out)
+{
+    const size_t ram_size = init_endmem - init_ramstart;
+    char buf[128], *data = NULL;
+    size_t size = 0;
+
+    /* Verify file header: */
+    if (glk_get_buffer_stream(stream, buf, 12) != 12 ||
+        memcmp(buf,     "FORM", 4) != 0 ||
+        memcmp(buf + 8, "IFZS", 4) != 0) goto failed;
+
+    /* Allocate memory */
+    size = get_uint32(buf + 4);
+    if (size < 8*4 + 128 + ram_size) goto failed;
+    size -= 8*4 + 128;
+    data = malloc(size);
+    if (data == NULL) goto failed;
+
+    /* Check IFhd */
+    if (glk_get_buffer_stream(stream, buf, 8) != 8 ||
+        memcmp(buf, "IFhd", 4) != 0 ||
+        get_uint32(buf + 4) != 128 ||
+        glk_get_buffer_stream(stream, buf, 128) != 128 ||
+        memcmp(buf, mem, 128) != 0) goto failed;
+
+    /* Read UMem chunk */
+    if (glk_get_buffer_stream(stream, buf, 12) != 12 ||
+        memcmp(buf, "UMem", 4) != 0 ||
+        get_uint32(buf + 4) != 4 + ram_size ||
+        get_uint32(buf + 8) != ram_size ||
+        glk_get_buffer_stream(stream, data, ram_size) != ram_size) goto failed;
+
+    /* Read XStk chunk */
+    if (glk_get_buffer_stream(stream, buf, 8) != 8 ||
+        memcmp(buf, "XStk", 4) != 0 ||
+        get_uint32(buf + 4) != size - ram_size ||
+        glk_get_buffer_stream(stream, data + ram_size, size - ram_size)
+            != size - ram_size) goto failed;
+
+    *size_out = size;
+    return data;
+
+failed:
+    if (data != NULL) free(data);
+    return NULL;
 }

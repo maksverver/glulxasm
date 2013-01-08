@@ -10,7 +10,8 @@
 enum StorySignal {
     SIGNAL_RESTART = 1,
     SIGNAL_QUIT    = 2,
-    SIGNAL_UNDO    = 3 };
+    SIGNAL_UNDO    = 3,
+    SIGNAL_RESTORE = 4 };
 
 struct Undo {
     struct Undo *previous;
@@ -20,12 +21,14 @@ struct Undo {
 
 static struct Context *story_start  = NULL;
 static struct Undo *undo = NULL;
+static char *restore_data = NULL;
+static size_t restore_size = 0;
 
 /* Defined in native_state */
 char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size);
 struct Context *native_deserialize(char *data, size_t size);
-void native_save_serialized(const char *data, size_t size, strid_t);
-
+void native_save_serialized(const char *data, size_t size, strid_t stream);
+char *native_restore_serialized(strid_t stream, size_t *size);
 
 void native_accelfunc(uint32_t l1, uint32_t l2)
 {
@@ -183,20 +186,22 @@ uint32_t native_restoreundo()
     return 1; /* indicates failure! */
 }
 
-uint32_t native_restore(uint32_t stream)
+uint32_t native_restore(uint32_t stream_id)
 {
-    /* not implemented */
-    (void)stream;
-    return 1; /* indicates failure! */
+    strid_t stream = find_stream_by_id(stream_id);
+    assert(restore_data == NULL);
+    if (!stream) return 1;  /* indicates failure! */
+    restore_data = native_restore_serialized(stream, &restore_size);
+    if (restore_data == NULL) return 1;  /* indicates failure! */
+    context_restore(story_start, (void*)SIGNAL_RESTORE); /* does not return */
+    return 1;  /* indicates failure! */
 }
 
 uint32_t native_save(uint32_t stream_id, uint32_t *data_sp, struct Context *ctx)
 {
-    strid_t stream;
+    strid_t stream = find_stream_by_id(stream_id);
     size_t size;
     char *data;
-
-    stream = find_stream_by_id(stream_id);
     if (!stream) return 1;  /* indicates failure! */
     data = native_serialize(data_sp, ctx, &size);
     if (data == NULL) return 1;  /* indicates failure! */
@@ -253,6 +258,19 @@ static int pop_undo_state()
     return (int)context_restart(call_stack, init_stack_size, ctx, (void*)-1);
 }
 
+static int restore_state()
+{
+    struct Context *ctx;
+
+    native_reset();
+    ctx = native_deserialize(restore_data, restore_size);
+    assert(ctx != NULL);
+    free(restore_data);
+    restore_data = NULL;
+    restore_size = 0;
+    return (int)context_restart(call_stack, init_stack_size, ctx, (void*)-1);
+}
+
 void native_start()
 {
     int sig = SIGNAL_RESTART;
@@ -271,6 +289,10 @@ void native_start()
 
         case SIGNAL_UNDO:
             sig = pop_undo_state();
+            break;
+
+        case SIGNAL_RESTORE:
+            sig = restore_state();
             break;
 
         default:
