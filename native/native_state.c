@@ -140,7 +140,10 @@ static void write_uint32(strid_t stream, uint32_t value)
    as a reference.  Guaranteed not to expand the output by more than 1 word
    for every sequence of 65535 words (or part thereof).
 
-   TODO: document encoding used!
+   Encoding: a sequence of blocks.  Each block starts with a 32-bit info header,
+   the low 16-bits encoding how many words to copy from the corresponding
+   position of `prev`, and the high 16-bits encoding how many new words to add
+   after that; the added words follow the info word verbatim.
 */
 static size_t compress_words( uint32_t *prev, size_t prev_size,
                               const uint32_t *next, size_t next_size,
@@ -156,17 +159,8 @@ static size_t compress_words( uint32_t *prev, size_t prev_size,
                 i < next_size && prev[i] == next[i]; ++i) ++copy;
 
         /* Determine how many words to add: */
-        for ( ; add < 0xffff && i < prev_size && (i + 1 >= next_size ||
-                prev[i] != next[i] || prev[i + 1] != next[i + 1] ); ++i ) ++add;
-
-        /* Note:
-            I could stop adding words as soon as I encounter the first copyable
-            word, but I choose to instead continue until I hit at least two
-            consecutive copyable words.  This compresses almost as well in
-            practice*, but decreases the number of blocks created.
-
-            Exercise for the reader: when does this increase the output size,
-            and by how much (in the worst case)?  */
+        for ( ; add < 0xffff && i < prev_size &&
+                (i >= next_size || prev[i] != next[i]); ++i ) ++add;
 
         if (!dest)
         {
@@ -174,9 +168,8 @@ static size_t compress_words( uint32_t *prev, size_t prev_size,
         }
         else
         {
-            size_t k = i - add;
             dest[j++] = copy | add << 16;
-            while (k < i) dest[j++] = prev[k++];
+            while (add > 0) dest[j++] = prev[i - add--];
         }
     }
     return j;
@@ -211,8 +204,13 @@ static size_t decompress_words( uint32_t *data, size_t data_size,
 char *compress_state( char *prev, size_t prev_size,
                       const char *next, size_t next_size, size_t *size_out )
 {
-    char *data;
+    char *data, *temp;
     size_t size;
+
+    assert(prev_size % sizeof(uint32_t) == 0);
+    assert(next_size % sizeof(uint32_t) == 0);
+
+#if 0
 
     /* Pass 1: calculate size of compressed data. */
     size = compress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),
@@ -220,7 +218,7 @@ char *compress_state( char *prev, size_t prev_size,
                            NULL );
 
     /* Allocate required memory */
-    size = size*sizeof(uint32_t);
+    size *= sizeof(uint32_t);
     data = malloc(size);
     if (data == NULL) return NULL;
 
@@ -228,6 +226,24 @@ char *compress_state( char *prev, size_t prev_size,
     compress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),
               (const uint32_t*)next, next_size / sizeof(uint32_t),
                     (uint32_t*)data );
+
+#else
+
+    /* Reserve enough memory to compress everything: */
+    temp = malloc((prev_size/sizeof(uint32_t) + 65534)/65535*
+                  65536*sizeof(uint32_t));
+    assert(temp != NULL);
+    size = compress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),
+                     (const uint32_t*)next, next_size / sizeof(uint32_t),
+                           (uint32_t*)temp ) * sizeof(uint32_t);
+
+    /* Copy data over.  I use malloc() + memcpy() because realloc() seems to
+                        cause heap fragmentation! */
+    data = malloc(size);
+    memcpy(data, temp, size);
+    free(temp);
+
+#endif
 
     *size_out = size;
     return data;
@@ -239,6 +255,9 @@ char *decompress_state( char *prev, size_t prev_size,
 {
     char *data;
     size_t size;
+
+    assert(prev_size % sizeof(uint32_t) == 0);
+    assert(next_size % sizeof(uint32_t) == 0);
 
     /* Pass 1: calculate size of decompressed data. */
     size = decompress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),

@@ -1,12 +1,25 @@
+DEBUG:
+    figure out why `move, undo, move` reports a different compressed size, even
+    though the game doesn't actually protect any memory!  Surely the compressed
+    states should be the same?
+
+    valgrind reports use of uninitialized data, but I'm not 100% sure I trust
+    its output.
+
 general:
    - rethink calling conventions (to speed up direct calls)?
+   - use valgrind to find memory leaks
 
 native:
    - undo code:
         make compression optional, and limit total amount of memory used
         by undo stack (e.g. 8 times one snapshot)?
+   - undo state should be cleared when game is restarted
+   - undo state should be cleared when game quits (makes it easier to find
+     memory leaks)
    - load storycode from DLL/.so
-     (requires storing stack in position-independent format!)
+     (requires storing stack in position-independent format, or loading the
+      storycode at a fixed address!)
    - store/check storycode hashcode
    - maybe: support for native accellerated functions?
             (this might not be necessary; need to check generated code,
