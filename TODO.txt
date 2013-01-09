@@ -2,9 +2,10 @@ general:
    - rethink calling conventions (to speed up direct calls)?
 
 native:
-   - implement either limited undo history, or compress history, or both.
-   - compressed memory in save files
-   - support for restoring
+   - load storycode from DLL/.so
+     (requires storing stack in position-independent format!)
+   - store/check storycode hashcode
+   - implement either limited undo history, or compressed history, or both.
    - maybe: support for native accellerated functions?
             (this might not be necessary; need to check generated code,
              and test performance impact of making function table non-const)

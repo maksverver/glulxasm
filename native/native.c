@@ -225,7 +225,7 @@ failed:
 }
 
 /* TODO: move this into storyfile.c so it is linked in the same code segment?
-         (why did I want this?) */
+         (why did I want this? --> so call stack becomes relocatable!) */
 static void *start(void *arg)
 {
     void *res;
