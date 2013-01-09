@@ -2,14 +2,17 @@ general:
    - rethink calling conventions (to speed up direct calls)?
 
 native:
+   - undo code:
+        make compression optional, and limit total amount of memory used
+        by undo stack (e.g. 8 times one snapshot)?
    - load storycode from DLL/.so
      (requires storing stack in position-independent format!)
    - store/check storycode hashcode
-   - implement either limited undo history, or compressed history, or both.
    - maybe: support for native accellerated functions?
             (this might not be necessary; need to check generated code,
              and test performance impact of making function table non-const)
    - maybe: support for filter subsystem?
+   - maybe: when saving, save (part of?) the undo stack in an extra chunk
 
 glulx-to-llvm:
     - write this! could be interesting.

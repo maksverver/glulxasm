@@ -14,7 +14,8 @@
     C bytes: call_stack[init_stack_size - C, init_stack_size)
     4 bytes: pointer to execution context
 
-  All values are stored in native byte-order. */
+  All values are stored in native byte-order.
+*/
 
 static uint32_t cur_protect_offset  = 0;
 static uint32_t cur_protect_size    = 0;
@@ -133,6 +134,129 @@ static void write_uint32(strid_t stream, uint32_t value)
     glk_put_char_stream(stream, value >> 16 & 0xff);
     glk_put_char_stream(stream, value >>  8 & 0xff);
     glk_put_char_stream(stream, value >>  0 & 0xff);
+}
+
+/* Compresses a sequence of 32-bit words (prev) using another sequence (next)
+   as a reference.  Guaranteed not to expand the output by more than 1 word
+   for every sequence of 65535 words (or part thereof).
+
+   TODO: document encoding used!
+*/
+static size_t compress_words( uint32_t *prev, size_t prev_size,
+                              const uint32_t *next, size_t next_size,
+                              uint32_t *dest )
+{
+    size_t i = 0, j = 0;
+    while (i < prev_size)
+    {
+        size_t copy = 0, add = 0;
+
+        /* Determine how many words to copy: as many as possible! */
+        for ( ; copy < 0xffff && i < prev_size &&
+                i < next_size && prev[i] == next[i]; ++i) ++copy;
+
+        /* Determine how many words to add: */
+        for ( ; add < 0xffff && i < prev_size && (i + 1 >= next_size ||
+                prev[i] != next[i] || prev[i + 1] != next[i + 1] ); ++i ) ++add;
+
+        /* Note:
+            I could stop adding words as soon as I encounter the first copyable
+            word, but I choose to instead continue until I hit at least two
+            consecutive copyable words.  This compresses almost as well in
+            practice*, but decreases the number of blocks created.
+
+            Exercise for the reader: when does this increase the output size,
+            and by how much (in the worst case)?  */
+
+        if (!dest)
+        {
+            j += 1 + add;
+        }
+        else
+        {
+            size_t k = i - add;
+            dest[j++] = copy | add << 16;
+            while (k < i) dest[j++] = prev[k++];
+        }
+    }
+    return j;
+}
+
+static size_t decompress_words( uint32_t *data, size_t data_size,
+                                const uint32_t *next, size_t next_size,
+                                uint32_t *prev )
+{
+    size_t i = 0, j = 0;
+    while (i < data_size)
+    {
+        uint32_t info = data[i++];
+        size_t copy = info & 0xffff, add = info >> 16;
+        assert(i + add <= data_size);
+        assert(copy == 0 || j + copy <= next_size);
+        if (prev == NULL)
+        {
+            i += add;
+            j += copy + add;
+        }
+        else
+        {
+            for ( ; copy-- > 0; ++j) prev[j] = next[j];
+            for ( ; add--  > 0; ++j) prev[j] = data[i++];
+        }
+    }
+    return j;
+}
+
+/* Compresses a serialized state.  Caller must free() the result! */
+char *compress_state( char *prev, size_t prev_size,
+                      const char *next, size_t next_size, size_t *size_out )
+{
+    char *data;
+    size_t size;
+
+    /* Pass 1: calculate size of compressed data. */
+    size = compress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),
+                     (const uint32_t*)next, next_size / sizeof(uint32_t),
+                           NULL );
+
+    /* Allocate required memory */
+    size = size*sizeof(uint32_t);
+    data = malloc(size);
+    if (data == NULL) return NULL;
+
+    /* Pass 2: compress into allocated buffer. */
+    compress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),
+              (const uint32_t*)next, next_size / sizeof(uint32_t),
+                    (uint32_t*)data );
+
+    *size_out = size;
+    return data;
+}
+
+/* Decompresses a compressed state.  Caller must free() the result! */
+char *decompress_state( char *prev, size_t prev_size,
+                        const char *next, size_t next_size, size_t *size_out )
+{
+    char *data;
+    size_t size;
+
+    /* Pass 1: calculate size of decompressed data. */
+    size = decompress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),
+                       (const uint32_t*)next, next_size / sizeof(uint32_t),
+                             NULL );
+
+    /* Allocate required memory */
+    size = size*sizeof(uint32_t);
+    data = malloc(size);
+    if (data == NULL) return NULL;
+
+    /* Pass 2: decompress into allocated buffer. */
+    decompress_words( (uint32_t*)prev, prev_size / sizeof(uint32_t),
+                (const uint32_t*)next, next_size / sizeof(uint32_t),
+                      (uint32_t*)data );
+
+    *size_out = size;
+    return data;
 }
 
 extern const uint8_t *glulx_data;

@@ -29,6 +29,11 @@ char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size);
 struct Context *native_deserialize(char *data, size_t size);
 void native_save_serialized(const char *data, size_t size, strid_t stream);
 char *native_restore_serialized(strid_t stream, size_t *size);
+char *compress_state( char *prev, size_t prev_size,
+                      const char *next, size_t next_size, size_t *size_out );
+char *decompress_state( char *prev, size_t prev_size,
+                        const char *next, size_t next_size, size_t *size_out );
+
 
 void native_accelfunc(uint32_t l1, uint32_t l2)
 {
@@ -217,6 +222,19 @@ uint32_t native_saveundo(uint32_t *data_sp, struct Context *ctx)
     entry->previous = undo;
     entry->data = native_serialize(data_sp, ctx, &entry->size);
     if (entry->data == NULL) goto failed;
+    if (undo)
+    {
+        size_t csize;
+        char *cdata;
+        cdata = compress_state(undo->data, undo->size,
+                            entry->data, entry->size, &csize);
+        assert(cdata != NULL);
+        info("undo state compressed from %d to %d bytes",
+            (int)entry->size, (int)csize);
+        free(undo->data);
+        undo->data = cdata;
+        undo->size = csize;
+    }
     undo = entry;
     return 0;
 failed:
@@ -253,6 +271,17 @@ static int pop_undo_state()
     ctx = native_deserialize(u->data, u->size);
     assert(ctx != NULL);
     undo = u->previous;
+    if (undo != NULL)
+    {
+        size_t size;
+        char *data;
+        data = decompress_state(undo->data, undo->size,
+                                u->data, u->size, &size);
+        assert(data != NULL);
+        free(undo->data);
+        undo->data = data;
+        undo->size = size;
+    }
     free(u->data);
     free(u);
     return (int)context_restart(call_stack, init_stack_size, ctx, (void*)-1);
