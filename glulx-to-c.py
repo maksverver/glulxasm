@@ -90,9 +90,9 @@ def main(path = None):
     print 'const uint32_t init_decoding_tbl = DECODING_TBL;'
     print 'const uint32_t init_checksum     = CHECKSUM;'
     print ''
-    print 'uint8_t mem[ENDMEM];'
-    print 'uint32_t data_stack[STACK_SIZE/sizeof(uint32_t)];'
-    print 'char call_stack[STACK_SIZE];'
+    print 'uint8_t mem[ENDMEM] = { 0 };'
+    print 'uint32_t data_stack[STACK_SIZE/sizeof(uint32_t)] = { 0 };'
+    print 'char call_stack[STACK_SIZE] = { 0 };'
     print ''
 
     for f in functions:

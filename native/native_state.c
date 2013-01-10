@@ -26,6 +26,30 @@ void native_protect(uint32_t offset, uint32_t size)
     cur_protect_size   = size;
 }
 
+/*
+static uint32_t fnv1_32(const void *data, size_t size)
+{
+    const unsigned char *p = data;
+    uint32_t hash = 2166136261u;
+    while (size-- > 0)
+    {
+        hash *= 16777619;
+        hash ^= *p++;
+    }
+    return hash;
+}
+
+static void print_checksum(const uint32_t *data_sp, const char *call_sp)
+{
+    info("memory checksum     %08x",
+         fnv1_32(mem, init_endmem));
+    info("data stack checksum %08x",
+         fnv1_32(data_stack, sizeof(*data_sp)*(data_sp - data_stack)));
+    info("call stack checksum %08x",
+         fnv1_32(call_sp, call_stack + init_stack_size - call_sp));
+}
+*/
+
 /* Serializes the story file state into a long string. */
 char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size)
 {
@@ -74,6 +98,11 @@ char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size)
     memcpy(pos, &ctx, sizeof(ctx));
     pos += sizeof(ctx);
 
+/*
+    info("serialized state");
+    print_checksum(data_sp, call_sp);
+*/
+
     assert(pos == data + data_size);
     *size = data_size;
     return data;
@@ -115,6 +144,12 @@ struct Context *native_deserialize(char *data, size_t size)
     /* execution context (assumed to be stored on stack!) */
     memcpy(&ctx, pos, sizeof ctx);
     pos += sizeof ctx;
+
+/*
+    info("deserialized state");
+    print_checksum((char*)data_stack + data_stack_size,
+                   call_stack + init_stack_size - call_stack_size);
+*/
 
     assert(pos == data + size);
     return ctx;

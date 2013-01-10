@@ -175,6 +175,8 @@ void native_reset()
     /* Clear stack (not really necessary, though nice for debugging) */
     memset(data_stack, 0, init_stack_size);
     memset(call_stack, 0, init_stack_size);
+
+    info("machine reset");
 }
 
 void native_restart()
@@ -222,7 +224,11 @@ uint32_t native_saveundo(uint32_t *data_sp, struct Context *ctx)
     entry->previous = undo;
     entry->data = native_serialize(data_sp, ctx, &entry->size);
     if (entry->data == NULL) goto failed;
-    if (undo)
+    if (!undo)
+    {
+        info("undo state serialized to %d bytes", (int)entry->size);
+    }
+    else
     {
         size_t csize;
         char *cdata;
@@ -242,8 +248,6 @@ failed:
     return 1;
 }
 
-/* TODO: move this into storyfile.c so it is linked in the same code segment?
-         (why did I want this? --> so call stack becomes relocatable!) */
 static void *start(void *arg)
 {
     void *res;
@@ -314,14 +318,17 @@ void native_start()
         case SIGNAL_RESTART:
             native_reset();
             sig = (int)context_start(call_stack, init_stack_size, start, NULL);
+            info("story restarted");
             break;
 
         case SIGNAL_UNDO:
             sig = pop_undo_state();
+            info("undone");
             break;
 
         case SIGNAL_RESTORE:
             sig = restore_state();
+            info("story restored");
             break;
 
         default:

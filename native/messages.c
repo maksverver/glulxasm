@@ -50,7 +50,7 @@ static void message(int level, const char *fmt, va_list ap)
     }
 }
 
-void info(const char *fmt, ...)
+void message_info(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -58,7 +58,7 @@ void info(const char *fmt, ...)
     va_end(ap);
 }
 
-void warn(const char *fmt, ...)
+void message_warn(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -66,7 +66,7 @@ void warn(const char *fmt, ...)
     va_end(ap);
 }
 
-void error(const char *fmt, ...)
+void message_error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -74,7 +74,7 @@ void error(const char *fmt, ...)
     va_end(ap);
 }
 
-void fatal(const char *fmt, ...)
+void message_fatal(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);

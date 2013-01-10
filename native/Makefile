@@ -1,24 +1,26 @@
-# For cheapglk:
-#GLKLIBS=cheapglk/libcheapglk.a
-#GLKINC=cheapglk/
-# 32-bit build:
-#GLKLIBS=cheapglk32/libcheapglk.a
-#GLKINC=cheapglk32/
-
-# For Gargoyle GLK:
-GLKLIBS=garglk/libgarglkmain.a garglk/libgarglk.so
-GLKINC=garglk/
-
-CFLAGS=-Wall -Wextra -O2 -I$(GLKINC) -Imxml/ -g -m32 -march=i686 \
-	-DGARGLK
-LDFLAGS=-Wl,--rpath='$$ORIGIN/garglk/'
+CFLAGS=-Wall -Wextra -O2 -I$(GLKINC) -Imxml/ -g -m32 -march=i686
 LDLIBS=$(GLKLIBS) mxml/libmxml.a
+LDFLAGS=-Wl,--no-export-dynamic -Wl,--exclude-libs=ALL -Wl,--as-needed
+#LDFLAGS+=-Tstory.lds
 
 STORYFILE_CFLAGS=$(CFLAGS) -fno-unit-at-a-time \
 	-Wno-unused-variable -Wno-unused-but-set-variable
 
 OBJS=glkop.o main.o messages.o native.o native_io.o native_search.o \
      native_state.o native_rng.o storycode.o context.o
+
+# For cheapglk:
+GLKLIBS=cheapglk32/libcheapglk.a
+GLKINC=cheapglk32/
+
+# For Gargoyle GLK:
+#GLKLIBS=garglk/libgarglkmain.a garglk/libgarglk.so
+#GLKINC=garglk/
+#CFLAGS+=-DGARGLK
+
+# To embed the story file in the executable:
+#OBJS+=storyfile.o
+#CFLAGS+=-DNATIVE_EMBED_STORYDATA
 
 all: story
 
@@ -32,11 +34,11 @@ storycode.o: storycode.c
 	$(CC) $(STORYFILE_CFLAGS) -c storycode.c
 
 # For embedding story data file into the executable:
-#storydata.o: storyfile.dat
-#	ld -m elf_x86_64 -r -b binary -o storydata.o storyfile.dat
+storyfile.o: storyfile.dat
+	ld -m elf_i386 -r -b binary -o $@ $<
 
-story: $(OBJS) $(GLKLIBS)
-	$(CC) $(CFLAGS) -o story $(OBJS) $(LDFLAGS) $(LDLIBS)
+story: $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 clean:
 	rm -f *.o

@@ -1,14 +1,10 @@
-DEBUG:
-    figure out why `move, undo, move` reports a different compressed size, even
-    though the game doesn't actually protect any memory!  Surely the compressed
-    states should be the same?
-
-    valgrind reports use of uninitialized data, but I'm not 100% sure I trust
-    its output.
+garglk:
+   - seems to be missing fonts?
+     (Try examining church in Counterfeit Monkey for Greek text.)
 
 general:
    - rethink calling conventions (to speed up direct calls)?
-   - use valgrind to find memory leaks
+   - use valgrind to find memory leaks?
 
 native:
    - undo code:
@@ -20,7 +16,7 @@ native:
    - load storycode from DLL/.so
      (requires storing stack in position-independent format, or loading the
       storycode at a fixed address!)
-   - store/check storycode hashcode
+   - better storycode binary id (hashcode of func_map + address of start()?)
    - maybe: support for native accellerated functions?
             (this might not be necessary; need to check generated code,
              and test performance impact of making function table non-const)
