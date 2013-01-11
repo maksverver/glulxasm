@@ -70,7 +70,7 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
     switch (selector)
     {
     case 0:  /* GlulxVersion */
-        return 0x00030101;
+        return 0x00030102;
 
     case 1:  /* TerpVersion */
         return (NATIVE_VERSION_MAJOR<<16) |
