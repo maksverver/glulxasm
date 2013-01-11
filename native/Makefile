@@ -7,7 +7,7 @@ STORYFILE_CFLAGS=$(CFLAGS) -fno-unit-at-a-time \
 	-Wno-unused-variable -Wno-unused-but-set-variable
 
 OBJS=glkop.o main.o messages.o native.o native_io.o native_search.o \
-     native_state.o native_rng.o storycode.o context.o
+     native_protect.o native_state.o native_rng.o storycode.o context.o
 
 # For cheapglk:
 GLKLIBS=cheapglk32/libcheapglk.a

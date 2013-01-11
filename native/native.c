@@ -34,6 +34,9 @@ char *compress_state( char *prev, size_t prev_size,
 char *decompress_state( char *prev, size_t prev_size,
                         const char *next, size_t next_size, size_t *size_out );
 
+/* Defined in native_protect */
+void push_protected();
+void pop_protected();
 
 void native_accelfunc(uint32_t l1, uint32_t l2)
 {
@@ -152,6 +155,8 @@ void native_reset()
     extern const uint8_t *glulx_data;
     extern size_t         glulx_size;
 
+    push_protected();
+
     /* Copy initialized data section: */
     if (glulx_size >= init_extstart)
     {
@@ -168,6 +173,8 @@ void native_reset()
 
     if (get_long(32) != init_checksum)
         fatal("checksum mismatch between story data and story code");
+
+    pop_protected();
 
     /* Reset string decoding table */
     native_setstringtbl(init_decoding_tbl);
@@ -271,9 +278,10 @@ static int pop_undo_state()
     struct Undo *u = undo;
 
     assert(u != NULL);
-    native_reset();
+    push_protected();
     ctx = native_deserialize(u->data, u->size);
     assert(ctx != NULL);
+    pop_protected();
     undo = u->previous;
     if (undo != NULL)
     {
@@ -295,9 +303,10 @@ static int restore_state()
 {
     struct Context *ctx;
 
-    native_reset();
+    push_protected();
     ctx = native_deserialize(restore_data, restore_size);
     assert(ctx != NULL);
+    pop_protected();
     free(restore_data);
     restore_data = NULL;
     restore_size = 0;

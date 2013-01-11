@@ -17,15 +17,6 @@
   All values are stored in native byte-order.
 */
 
-static uint32_t cur_protect_offset  = 0;
-static uint32_t cur_protect_size    = 0;
-
-void native_protect(uint32_t offset, uint32_t size)
-{
-    cur_protect_offset = offset;
-    cur_protect_size   = size;
-}
-
 /*
 static uint32_t fnv1_32(const void *data, size_t size)
 {
@@ -115,12 +106,6 @@ struct Context *native_deserialize(char *data, size_t size)
     uint32_t data_stack_size;
     uint32_t call_stack_size;
     char *pos = data;
-
-    if (cur_protect_offset < init_endmem && cur_protect_size > 0)
-    {
-        /* Protected memory range not implemented yet! */
-        assert(0);
-    }
 
     /* interpreter memory */
     memcpy(mem + init_ramstart, pos, init_endmem - init_ramstart);

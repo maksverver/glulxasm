@@ -70,10 +70,10 @@ glulxercise.ulx:
     undo: pass
     multiundo: pass
     verify: pass
-  ! protect: FAIL (protected memory region not supported yet!)
+    protect: pass
     memsize: "pass" (but setmemsize is not supported)
     undomemsize: "pass" (but setmemsize is not supported)
-  ! undorestart: FAIL (needs undo + mprotect)
+    undorestart: pass
     heap: FAIL (heap allocation not supported)
     undoheap: FAIL (heap allocation not supported)
     acceleration: "pass" (but accelerated functions are not supported)
