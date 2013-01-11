@@ -1,8 +1,8 @@
 # The table below is used by glulx-to-c.py to generated C code.
 
 # Note: in PARAMETERS, l/s/b means load/store/branch respectively.
-#       in SIZES, l/s/b measn signed long/short/byte respectively (and L/S/B are
-#       the unsigned equivalents). This is terribly confusing.
+#       in SIZES, l/s/b/f means signed long/short/byte/float respectively
+#       (and L/S/B are the unsigned equivalents). This is terribly confusing.
 
 # mnemonic          parameters sizes    code
 
@@ -66,8 +66,8 @@ callfiii            lllls     LLLLL     sp[0] = l4; sp[1] = l3; sp[2] = l2; sp[3
 ret                 l         L         return l1;
 tailcall            ll        LL        *sp = l2; return func(l1)(sp);
 
-catch               sb        Lx        (void)s1; b1;  /* not implemented yet */
-throw               ll        LL        -              /* not implemented yet */
+catch               sb        Lx        -
+throw               ll        LL        -
 
 getmemsize          s         L         s1 = native_getmemsize();
 setmemsize          ls        LL        s1 = native_setmemsize(l1);
@@ -111,3 +111,36 @@ nop                 -         -         ;
 gestalt             lls       LLL       s1 = native_gestalt(l1, l2);
 debugtrap           l         L         native_debugtrap(l1, &sp);
 glk                 lls       LLL       s1 = native_glk(l1, l2, &sp);
+
+numtof              ls        lf        -
+ftonumz             ls        fl        -
+ftonumn             ls        fl        -
+ceil                ls        ff        -
+floor               ls        ff        -
+
+fadd                lls       fff       -
+fsub                lls       fff       -
+fmul                lls       fff       -
+fdiv                lls       fff       -
+fmod                llss      ffff      -
+sqrt                ls        ff        -
+exp                 ls        ff        -
+log                 ls        ff        -
+pow                 lls       fff       -
+
+sin                 ls        ff        -
+cos                 ls        ff        -
+tan                 ls        ff        -
+asin                ls        ff        -
+acos                ls        ff        -
+atan                ls        ff        -
+atan2               lls       fff       -
+
+jfeq                lllb      fffx      -
+jfne                lllb      fffx      -
+jflt                llb       ffx       -
+jfle                llb       ffx       -
+jfgt                llb       ffx       -
+jfge                llb       ffx       -
+jisnan              lb        fx        -
+jisinf              lb        fx        -

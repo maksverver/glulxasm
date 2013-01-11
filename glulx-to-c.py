@@ -30,6 +30,7 @@ def int_type(size):
     if size == 'b': return 'int8_t'
     if size == 's': return 'int16_t'
     if size == 'l': return 'int32_t'
+    if size == 'f': return 'float'
     assert 0
 
 def getter(size):
@@ -39,12 +40,14 @@ def getter(size):
     if size == 'b': return '(int8_t)get_byte'
     if size == 's': return '(int16_t)get_shrt'
     if size == 'l': return '(int32_t)get_long'
+    if size == 'f': return 'get_float'
     assert 0
 
 def setter(size):
     if size in ('B', 'b'): return 'set_byte'
     if size in ('S', 's'): return 'set_shrt'
     if size in ('L', 'l'): return 'set_long'
+    if size == 'f':        return 'set_float'
     assert 0
 
 def main(path = None):
