@@ -94,18 +94,12 @@ uint32_t native_binarysearch(
     uint32_t num_structs, uint32_t key_off, uint32_t options )
 {
     const bool key_indirect        = options&0x01;
-    const bool zero_key_terminates = options&0x02;
     const bool return_index        = options&0x04;
     uint32_t lo = 0, hi = num_structs;
 
     /* printf("binary search (key=0x%08x, key_size=%d, start=0x%08x, "
            "struct_size=%d, num_structs=%d, key_off=%d, options=%d)\n",
            key, key_size, start, struct_size, num_structs, key_off, options); */
-
-    /* The Glulxe standard isn't clear on how the zero_key_terminates options
-       works for binary search, so disallow it for the moment:*/
-    /* assert(!zero_key_terminates); */
-    (void)zero_key_terminates;
 
     #define binsearch_direct(type,get_type)                                    \
     {                                                                          \
