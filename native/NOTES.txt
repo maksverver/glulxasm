@@ -64,7 +64,7 @@ glulxercise.ulx:
     gidispa: pass
     random: pass
     nonrandom: pass
- !! search: FAIL (segfault on binary search!)
+  ! search: FAIL (assertion failure on linked list search)
     mzero: pass
     mcopy: pass
     undo: pass
@@ -89,4 +89,4 @@ glulxercise.ulx:
     fprint: FAIL (not implemented, and breaks interpreter loop!)
     safari5: pass
 
-The failure of `iosys' and `search` are regressions!
+The failure of `iosys' is a regression!

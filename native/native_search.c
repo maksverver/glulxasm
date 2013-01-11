@@ -19,7 +19,7 @@ static INLINE bool check_search_params(
 
     /* Calculate end offset */
     uint32_t max_structs = (end_mem - start)/struct_size;
-    if (max_structs > num_structs) max_structs = num_structs;
+    if (num_structs > max_structs) num_structs = max_structs;
     *end = start + num_structs*struct_size;
     return true;
 }
@@ -35,33 +35,23 @@ static INLINE int compare_key(
 {
     if (key_indirect)
     {
-        uint32_t n;
-        for (n = 0; n < key_size; ++n)
-        {
-            if (mem[key + n] != mem[offset + n])
-                return (mem[key + n] < mem[offset + n]) ? -1 : +1;
-        }
-        return 0;
+        return memcmp(mem + key, mem + offset, key_size);
     }
     else  /* key direct */
     {
-        uint32_t val;
         switch (key_size)
         {
-        case 1: val = get_byte(offset); break;
-        case 2: val = get_shrt(offset); break;
-        case 4: val = get_long(offset); break;
-        default: assert(0);
+        case 1: return get_byte(offset) - (uint8_t)key;
+        case 2: return get_shrt(offset) - (uint16_t)key;
+        case 4: return get_long(offset) - key;
         }
-        if (key < val) return -1;
-        if (key > val) return +1;
-        return 0;
+        assert(0);
     }
 }
 
 static INLINE uint32_t search_failure(bool return_index)
 {
-    return return_index ? (uint32_t)-1 : 0;
+    return 0 - return_index;
 }
 
 static INLINE uint32_t search_success(
@@ -91,8 +81,8 @@ uint32_t native_linearsearch(
     {
         if (compare_key(key, key_size, key_indirect, offset + key_off) == 0)
             break;
-        if (zero_key_terminates && zero_key(offset, key_size))
-            break;
+        if (zero_key_terminates && zero_key(offset + key_off, key_size))
+            return search_failure(return_index);
     }
 
     if (offset >= end) return search_failure(return_index);
