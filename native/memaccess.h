@@ -16,7 +16,6 @@ extern uint8_t mem[];
 #define get_long(a) ({ uint32_t v; memcpy(&v, &mem[a], 4); ntohl(v); })
 #define set_shrt(a,v) ((void)({uint16_t w = htons(v); memcpy(&mem[a], &w, 2);}))
 #define set_long(a,v) ((void)({uint32_t w = htonl(v); memcpy(&mem[a], &w, 4);}))
-#define set_float(a,v) ((void)({uint32_t w = htonl(v); memcpy(&mem[a], &w, 4);}))
 
 #define get_float(a) ({ union long_float lf; lf.l = get_long(a); lf.f; })
 #define set_float(a,v) ({ union long_float lf; lf.f = v; set_long(a, lf.l); })

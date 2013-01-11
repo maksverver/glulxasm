@@ -5,15 +5,11 @@ Contains code from Glulxle (glkop.c) and Glk (gi_blorb.c) written by:
 
 -- 
 
-Major missing features:
- - saving/loading of game state in files
- - saving/loading of state for undoing
-
 To figure out:
  - packaging; into four files:
-    GLK-executable
-    dynamic library containing native interpreter code
-    dynamic library containing storyfile
+    executable
+    GLK library
+    dynamic library containing native storyfile
     blorb file containing storyfile
 
 
@@ -29,15 +25,80 @@ Accelerated functions:
 
 Zarf has updated code on Github: http://github.com/erkyrath/
 
-glulxercise:
-65 failures.
-- jump: 2 (jumpabs not being supported)
-- jumpform: 20 (jump to indirect offset not being supported)
-- throw: 20 (not supported)
-- iosys: 11 (TODO?)
-- filter: 11 (TODO?)
-- nullio: 1 (TODO?)
+accelfunctest.ulx:
+    doesn't work (accelerated functions not implemented)
 
-memcopytest:
-- seems to work OK (no specific test cases given)
+memheaptest.ulx:
+    doesn't work (memory heap not supported)
 
+memcopytest.ulx:
+    crashes!
+
+glulxercise.ulx:
+    operand: pass
+    arith: pass
+    comvar: pass
+    comarith: pass
+    bitwise: pass
+    shift: pass
+    trunc: pass
+    extend: pass
+    aload: pass
+    astore: FAIL: "passes" then crashes interpreter on next operation!
+    arraybit: pass
+    call: pass
+    callstack: pass
+    jump: 2 TESTS FAIL (jumbabs not supported)
+    jumpform: 20 TESTS FAIL (indirect jump targets not supported)
+    compare: pass
+    stack: 1 TESTS FAIL: and crashes the interpreter on next operation!
+    gestalt: 3 TESTS FAIL (because filter subsystem is not supported)
+    throw: 20 TESTS FAIL (catch/throw not supported)
+    strings: pass
+    ramstring: pass
+    iosys: FAIL (and hangs the interpreter!)
+    iosys2: pass
+    filter: 11 TESTS FAIL (filter subsystem not supported)
+    nullio: 1 TEST FAILS
+    glk: pass
+    gidispa: pass
+    random: pass
+    nonrandom: pass
+    search: FAIL (segfault on binary search!)
+    mzero: pass
+    mcopy: pass
+    undo: FAIL (assertion failure in native code)
+    multiundo: pass
+    verify: pass
+    protect: FAIL (protected memory region not supported yet!)
+    memsize: "pass" (but setmemsize is not supported)
+    undomemsize: "pass" (but setmemsize is not supported)
+    undorestart: FAIL (needs undo + mprotect)
+    heap: FAIL (heap allocation not supported)
+    undoheap: FAIL (heap allocation not supported)
+    acceleration: "pass" (but accelerated functions are not supported)
+    floatconv: FAIL (not implemented, and breaks interpreter loop!)
+    floatarith: FAIL (not implemented, and breaks interpreter loop!)
+    floatmod: FAIL (not implemented, and breaks interpreter loop!)
+    floatround: FAIL (not implemented, and breaks interpreter loop!)
+    floatexp: FAIL (not implemented, and breaks interpreter loop!)
+    floattrig: FAIL (not implemented, and breaks interpreter loop!)
+    floatatan2: FAIL (not implemented, and breaks interpreter loop!)
+    fjumpform: FAIL (not implemented, and breaks interpreter loop!)
+    fcompare: FAIL (not implemented, and breaks interpreter loop!)
+    fprint: FAIL (not implemented, and breaks interpreter loop!)
+    safari5: pass
+
+There are quite a few regressions compared to my earlier results:
+
+    glulxercise:
+    65 failures.
+    - jump: 2 (jumpabs not being supported)
+    - jumpform: 20 (jump to indirect offset not being supported)
+    - throw: 20 (not supported)
+    - iosys: 11 (TODO?)
+    - filter: 11 (TODO?)
+    - nullio: 1 (TODO?)
+
+    memcopytest:
+    - seems to work OK (no specific test cases given)

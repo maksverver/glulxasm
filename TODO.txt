@@ -1,3 +1,14 @@
+Must debug regressions introduced in native code! (See native/NOTES.txt!)
+
+glulxercise:
+    astore: FAIL: "passes" then crashes interpreter on next operation!
+    stack: 1 TESTS FAIL: and crashes the interpreter on next operation!
+    iosys: is expected to fail, but shouldn't hang the interpreter!
+    search: FAIL (segfault on binary search!)
+    undo: FAIL (assertion failure in native code)
+memcopytest.ulx:
+    crashes
+
 garglk:
    - seems to be missing fonts?
      (Try examining church in Counterfeit Monkey for Greek text.)
@@ -10,7 +21,6 @@ native:
    - undo code:
         make compression optional, and limit total amount of memory used
         by undo stack (e.g. 8 times one snapshot)?
-   - undo state should be cleared when game is restarted
    - undo state should be cleared when game quits (makes it easier to find
      memory leaks)
    - load storycode from DLL/.so
