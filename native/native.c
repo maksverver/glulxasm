@@ -313,22 +313,23 @@ void native_start()
         {
         case 0:
         case SIGNAL_QUIT:
+            info("quit");
             return;
 
         case SIGNAL_RESTART:
             native_reset();
+            info("restart");
             sig = (int)context_start(call_stack, init_stack_size, start, NULL);
-            info("story restarted");
             break;
 
         case SIGNAL_UNDO:
+            info("undo");
             sig = pop_undo_state();
-            info("undone");
             break;
 
         case SIGNAL_RESTORE:
+            info("restore");
             sig = restore_state();
-            info("story restored");
             break;
 
         default:

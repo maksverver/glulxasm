@@ -346,7 +346,8 @@ static void stream_compressed_string(uint32_t string_offset, uint32_t *sp)
 
 void native_streamstr(uint32_t offset, uint32_t *sp)
 {
-    switch (mem[offset])
+    int type = mem[offset];
+    switch (type)
     {
     case 0xe0:  /* unencoded C-string */
         {
@@ -367,7 +368,7 @@ void native_streamstr(uint32_t offset, uint32_t *sp)
         break;
 
     default:
-        assert(0);
+        error("invalid string object type (0x%02x)", type);
     }
 }
 

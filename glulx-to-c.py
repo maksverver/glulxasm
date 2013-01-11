@@ -80,7 +80,8 @@ def main(path = None):
     print '#define RAMSTART     ((uint32_t)%du)' % header.ramstart
     print '#define EXTSTART     ((uint32_t)%du)' % header.extstart
     print '#define ENDMEM       ((uint32_t)%du)' % header.endmem
-    print '#define STACK_SIZE   ((uint32_t)%du)' % header.stack_size
+    #                                                                    HACK!
+    print '#define STACK_SIZE   ((uint32_t)%du)' % (header.stack_size + (1<<20))
     print '#define START_FUNC   ((uint32_t)%du)' % header.start_func
     print '#define DECODING_TBL ((uint32_t)%du)' % header.decoding_tbl
     print '#define CHECKSUM     ((uint32_t)%du)' % header.checksum
