@@ -1,3 +1,4 @@
+CC=gcc
 CFLAGS=-Wall -Wextra -O0 -I$(GLKINC) -Imxml/ -g -m32 -march=i686
 LDLIBS=$(GLKLIBS) mxml/libmxml.a
 LDFLAGS=-Wl,--no-export-dynamic -Wl,--exclude-libs=ALL -Wl,--as-needed
