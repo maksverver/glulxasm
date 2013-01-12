@@ -4,8 +4,6 @@
 #include "xtoy.h"
 #include "string.h"  /* for memcpy */
 
-union long_float { long l; float f; };
-
 extern uint8_t mem[];
 
 #define get_byte(a) (mem[a])
@@ -17,8 +15,15 @@ extern uint8_t mem[];
 #define set_shrt(a,v) ((void)({uint16_t w = htons(v); memcpy(&mem[a], &w, 2);}))
 #define set_long(a,v) ((void)({uint32_t w = htonl(v); memcpy(&mem[a], &w, 4);}))
 
-#define get_float(a) ({ union long_float lf; lf.l = get_long(a); lf.f; })
-#define set_float(a,v) ({ union long_float lf; lf.f = v; set_long(a, lf.l); })
+/*
+#define get_float(a)   (long_to_float(get_long(a)))
+#define set_float(a,v) (set_long(a, float_to_long(v)))
+*/
+
+union long_float { long l; float f; };
+
+#define float_to_long(v) ({ union long_float lf; lf.f = v; lf.l; })
+#define long_to_float(v) ({ union long_float lf; lf.l = v; lf.f; })
 
 /* These require -fno-strict-aliasing (or equivalent): */
 /*

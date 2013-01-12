@@ -77,16 +77,17 @@ glulxercise.ulx:
     heap: FAIL (heap allocation not supported)
     undoheap: FAIL (heap allocation not supported)
     acceleration: "pass" (but accelerated functions are not supported)
-    floatconv: FAIL (not implemented, and breaks interpreter loop!)
-    floatarith: FAIL (not implemented, and breaks interpreter loop!)
-    floatmod: FAIL (not implemented, and breaks interpreter loop!)
-    floatround: FAIL (not implemented, and breaks interpreter loop!)
-    floatexp: FAIL (not implemented, and breaks interpreter loop!)
-    floattrig: FAIL (not implemented, and breaks interpreter loop!)
-    floatatan2: FAIL (not implemented, and breaks interpreter loop!)
-    fjumpform: FAIL (not implemented, and breaks interpreter loop!)
-    fcompare: FAIL (not implemented, and breaks interpreter loop!)
-    fprint: FAIL (not implemented, and breaks interpreter loop!)
+    floatconv: pass
+    floatarith: pass
+  ! floatmod: 3 TESTS FAIL
+  ! floatround: 13 TESTS FAIL
+    floatexp: pass
+  ! floattrig: 4 TESTS FAIL
+    floatatan2: pass
+    fjumpform: 5 TESTS FAIL (indirect jump targets not supported)
+  ! fjump: 14 TESTS FAIL
+    fcompare: pass
+    fprint: pass
     safari5: pass
 
 The failure of `iosys' is a regression!

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 #include "memaccess.h"
 #include "context.h"
 
@@ -52,5 +53,7 @@ void native_streamstr(uint32_t offset, uint32_t *sp);
 void native_streamunichar(uint32_t ch);
 uint32_t *native_ustring_dup(uint32_t offset);
 uint32_t native_verify();
+int32_t native_ftonumz(float f);
+int32_t native_ftonumn(float f);
 
 #endif /* ndef NATIVE_H_INCLUDED */

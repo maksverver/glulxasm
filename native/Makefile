@@ -1,14 +1,14 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -O0 -I$(GLKINC) -Imxml/ -g -m32 -march=i686
-LDLIBS=$(GLKLIBS) mxml/libmxml.a
+CFLAGS=-Wall -Wextra -O0 -I$(GLKINC) -Imxml/ -g -m32 -march=i686 -msse -mfpmath=sse
+LDLIBS=$(GLKLIBS) mxml/libmxml.a -lm
 LDFLAGS=-Wl,--no-export-dynamic -Wl,--exclude-libs=ALL -Wl,--as-needed
 #LDFLAGS+=-Tstory.lds
 
-STORYFILE_CFLAGS=$(CFLAGS) -fno-unit-at-a-time \
-	-Wno-unused-variable -Wno-unused-but-set-variable
+STORYFILE_CFLAGS=$(CFLAGS) -Wno-unused-variable -Wno-unused-but-set-variable
 
-OBJS=glkop.o main.o messages.o native.o native_io.o native_search.o \
-     native_protect.o native_state.o native_rng.o storycode.o context.o
+OBJS=glkop.o main.o messages.o native.o native_float.o native_io.o \
+	native_protect.o native_search.o native_state.o native_rng.o \
+	storycode.o context.o
 
 # For cheapglk:
 GLKLIBS=cheapglk32/libcheapglk.a

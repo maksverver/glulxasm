@@ -30,7 +30,7 @@ def int_type(size):
     if size == 'b': return 'int8_t'
     if size == 's': return 'int16_t'
     if size == 'l': return 'int32_t'
-    if size == 'f': return 'float'
+    if size == 'f': return 'uint32_t'
     assert 0
 
 def getter(size):
@@ -40,14 +40,14 @@ def getter(size):
     if size == 'b': return '(int8_t)get_byte'
     if size == 's': return '(int16_t)get_shrt'
     if size == 'l': return '(int32_t)get_long'
-    if size == 'f': return 'get_float'
+    if size == 'f': return 'get_long'
     assert 0
 
 def setter(size):
     if size in ('B', 'b'): return 'set_byte'
     if size in ('S', 's'): return 'set_shrt'
     if size in ('L', 'l'): return 'set_long'
-    if size == 'f':        return 'set_float'
+    if size == 'f':        return 'set_long'
     assert 0
 
 def main(path = None):
@@ -168,31 +168,41 @@ def main(path = None):
 
                     if o.is_immediate():
                         v = str(o.value())
-                        if s in 'LSB': v += 'u'
-                        print '\t\t%s l%d = %s;' % (t, num_load, v)
+                        if s in 'LSBf': v += 'u'
                     elif o.is_mem_ref():
-                        print '\t\t%s l%d = %s(%d);' % \
-                            (t, num_load, getter(s), o.value()&0xffffffff)
+                        v = '%s(%d)' % (getter(s), o.value()&0xffffffff)
                     elif o.is_ram_ref():
-                        print '\t\t%s l%d = %s(%d + RAMSTART);' % \
-                            (t, num_load, getter(s), o.value())
+                        v = '%s(%d + RAMSTART);' % (getter(s), o.value())
                     elif o.is_local_ref():
                         assert o.value()%4 == 0
-                        print '\t\t%s l%d = loc%d;' % (t, num_load, o.value()/4)
+                        v = 'loc%d' % (o.value()/4)
                     elif o.is_stack_ref():
-                        print '\t\t%s l%d = (%s)*--sp;' % (t, num_load, t)
+                        v = '(%s)*--sp;' % (t,)
                     else:
                         assert 0
 
+                    if s == 'f':
+                        t = 'float'
+                        v = 'long_to_float(%s)' % v
+
+                    print '\t\t%s l%d = %s;' % (t, num_load, v)
+
                 elif p == 's':  # stored argument
                     num_store += 1
-                    print '\t\t%s s%d;' % (int_type(s), num_store)
+                    t = int_type(s)
+                    if s == 'f':
+                        t = 'float'
+                    if code:
+                        print '\t\t%s s%d;' % (t, num_store)
+                    else:
+                        # initialize to zero to suppress spurious warnings
+                        print '\t\t%s s%d = 0;' % (t, num_store)
 
                 else:
                     assert 0
 
             if code != '':
-                print '\t\t' + code
+                print '\t\t%s /* %s */' % (code, instr.mnemonic)
             else:
                 print '\t\tnative_invalidop(%d, "%s");'%\
                     (instr.offset(), instr.mnemonic)
@@ -205,18 +215,20 @@ def main(path = None):
                     print '\t\t#undef b1'
                 elif p == 's':  # stored argument
                     num_store += 1
+                    v = 's%d'%num_store
+                    if s == 'f':
+                        v = 'float_to_long(%s)'%v
                     if o.is_immediate():
                         assert o.value() == 0
                     elif o.is_mem_ref():
-                        print '\t\t%s(%d, s%d);' % \
-                            (setter(s), o.value(), num_store)
+                        print '\t\t%s(%d, %s);' % (setter(s), o.value(), v)
                     elif o.is_ram_ref():
-                        print '\t\t%s(%d + RAMSTART, s%d);' % \
-                            (setter(s), o.value(), num_store)
+                        print '\t\t%s(%d + RAMSTART, %s);' % \
+                            (setter(s), o.value(), v)
                     elif o.is_local_ref():
-                        print '\t\tloc%d = s%d;' % (o.value()/4, num_store)
+                        print '\t\tloc%d = %s;' % (o.value()/4, v)
                     elif o.is_stack_ref():
-                        print '\t\t*sp++ = s%d;' % (num_store,)
+                        print '\t\t*sp++ = %s;' % (v,)
                     else:
                         assert 0
                 else:

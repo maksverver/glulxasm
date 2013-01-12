@@ -112,35 +112,35 @@ gestalt             lls       LLL       s1 = native_gestalt(l1, l2);
 debugtrap           l         L         native_debugtrap(l1, &sp);
 glk                 lls       LLL       s1 = native_glk(l1, l2, &sp);
 
-numtof              ls        lf        -
-ftonumz             ls        fl        -
-ftonumn             ls        fl        -
-ceil                ls        ff        -
-floor               ls        ff        -
+numtof              ls        lf        s1 = (float)l1;
+ftonumz             ls        fl        s1 = native_ftonumz(l1);
+ftonumn             ls        fl        s1 = native_ftonumn(l1);
+ceil                ls        ff        s1 = (int)ceilf(l1);
+floor               ls        ff        s1 = (int)floorf(l1);
 
-fadd                lls       fff       -
-fsub                lls       fff       -
-fmul                lls       fff       -
-fdiv                lls       fff       -
-fmod                llss      ffff      -
-sqrt                ls        ff        -
-exp                 ls        ff        -
-log                 ls        ff        -
-pow                 lls       fff       -
+fadd                lls       fff       s1 = l1 + l2;
+fsub                lls       fff       s1 = l1 - l2;
+fmul                lls       fff       s1 = l1 * l2;
+fdiv                lls       fff       s1 = l1 / l2;
+fmod                llss      ffff      s1 = fmodf(l1, l2); s2 = truncf(l1/l2);
+sqrt                ls        ff        s1 = sqrtf(l1);
+exp                 ls        ff        s1 = expf(l1);
+log                 ls        ff        s1 = logf(l1);
+pow                 lls       fff       s1 = powf(l1, l2);
 
-sin                 ls        ff        -
-cos                 ls        ff        -
-tan                 ls        ff        -
-asin                ls        ff        -
-acos                ls        ff        -
-atan                ls        ff        -
-atan2               lls       fff       -
+sin                 ls        ff        s1 = sinf(l1);
+cos                 ls        ff        s1 = cosf(l1);
+tan                 ls        ff        s1 = tanf(l1);
+asin                ls        ff        s1 = asinf(l1);
+acos                ls        ff        s1 = acosf(l1);
+atan                ls        ff        s1 = atanf(l1);
+atan2               lls       fff       s1 = atan2f(l1, l2);
 
-jfeq                lllb      fffx      -
-jfne                lllb      fffx      -
-jflt                llb       ffx       -
-jfle                llb       ffx       -
-jfgt                llb       ffx       -
-jfge                llb       ffx       -
-jisnan              lb        fx        -
-jisinf              lb        fx        -
+jfeq                lllb      fffx      if (  fabsf(l1 - l2) <= fabsf(l3) ) b1;
+jfne                lllb      fffx      if (!(fabsf(l1 - l2) <= fabsf(l3))) b1;
+jflt                llb       ffx       if (l1 <  l2) b1;
+jfle                llb       ffx       if (l1 <= l2) b1;
+jfgt                llb       ffx       if (l1 >  l2) b1;
+jfge                llb       ffx       if (l1 >= l2) b1;
+jisnan              lb        fx        if (l1 != l1) b1;
+jisinf              lb        fx        if (l1 == l1 && (l1 - l1 != l1 - l1)) b1;
