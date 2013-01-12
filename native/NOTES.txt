@@ -64,7 +64,7 @@ glulxercise.ulx:
     gidispa: pass
     random: pass
     nonrandom: pass
-  ! search: FAIL (assertion failure on linked list search)
+    search: pass
     mzero: pass
     mcopy: pass
     undo: pass
