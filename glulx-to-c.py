@@ -80,8 +80,7 @@ def main(path = None):
     print '#define RAMSTART     ((uint32_t)%du)' % header.ramstart
     print '#define EXTSTART     ((uint32_t)%du)' % header.extstart
     print '#define ENDMEM       ((uint32_t)%du)' % header.endmem
-    #                                                                    HACK!
-    print '#define STACK_SIZE   ((uint32_t)%du)' % (header.stack_size + (1<<20))
+    print '#define STACK_SIZE   ((uint32_t)%du)' % header.stack_size
     print '#define START_FUNC   ((uint32_t)%du)' % header.start_func
     print '#define DECODING_TBL ((uint32_t)%du)' % header.decoding_tbl
     print '#define CHECKSUM     ((uint32_t)%du)' % header.checksum
@@ -93,10 +92,6 @@ def main(path = None):
     print 'const uint32_t init_start_func   = START_FUNC;'
     print 'const uint32_t init_decoding_tbl = DECODING_TBL;'
     print 'const uint32_t init_checksum     = CHECKSUM;'
-    print ''
-    print 'uint8_t mem[ENDMEM] = { 0 };'
-    print 'uint32_t data_stack[STACK_SIZE/sizeof(uint32_t)] = { 0 };'
-    print 'char call_stack[STACK_SIZE] = { 0 };'
     print ''
 
     for f in functions:

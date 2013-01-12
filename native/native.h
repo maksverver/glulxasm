@@ -7,10 +7,19 @@
 #include "memaccess.h"
 #include "context.h"
 
+#define MAX_MEM_SIZE        (16 << 20)
+#define CALL_STACK_SIZE     ( 8 << 20)
+#define DATA_STACK_SIZE     ( 4 << 20)
+
 /* Interpreter version (major.minor.revis) */
 #define NATIVE_VERSION_MAJOR 0
 #define NATIVE_VERSION_MINOR 1
 #define NATIVE_VERSION_REVIS 0
+
+/* VM state. Initialized in bss_*.c */
+extern uint8_t          mem[];
+extern uint32_t         data_stack[];
+extern char             call_stack[];
 
 void native_accelfunc(uint32_t l1, uint32_t l2);
 void native_accelparam(uint32_t l1, uint32_t l2);

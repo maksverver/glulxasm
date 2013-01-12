@@ -179,10 +179,6 @@ void native_reset()
     /* Reset string decoding table */
     native_setstringtbl(init_decoding_tbl);
 
-    /* Clear stack (not really necessary, though nice for debugging) */
-    memset(data_stack, 0, init_stack_size);
-    memset(call_stack, 0, init_stack_size);
-
     info("machine reset");
 }
 
@@ -296,7 +292,7 @@ static int pop_undo_state()
     }
     free(u->data);
     free(u);
-    return (int)context_restart(call_stack, init_stack_size, ctx, (void*)-1);
+    return (int)context_restart(call_stack, CALL_STACK_SIZE, ctx, (void*)-1);
 }
 
 static int restore_state()
@@ -310,7 +306,7 @@ static int restore_state()
     free(restore_data);
     restore_data = NULL;
     restore_size = 0;
-    return (int)context_restart(call_stack, init_stack_size, ctx, (void*)-1);
+    return (int)context_restart(call_stack, CALL_STACK_SIZE, ctx, (void*)-1);
 }
 
 void native_start()
@@ -328,7 +324,7 @@ void native_start()
         case SIGNAL_RESTART:
             native_reset();
             info("restart");
-            sig = (int)context_start(call_stack, init_stack_size, start, NULL);
+            sig = (int)context_start(call_stack, CALL_STACK_SIZE, start, NULL);
             break;
 
         case SIGNAL_UNDO:

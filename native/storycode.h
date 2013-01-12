@@ -13,15 +13,6 @@ extern const uint32_t init_start_func;
 extern const uint32_t init_decoding_tbl;
 extern const uint32_t init_checksum;
 
-/* Story state:
-    - mem contains the interpreter memory (init_endmem bytes)
-    - data_stack contains the interpreter stack (init_stack_size bytes)
-    - call_stack contains the C call stack (init_stack_size bytes)
-*/
-extern uint8_t          mem[];
-extern uint32_t         data_stack[];
-extern char             call_stack[];
-
 /* Function map covering addresses from 0 to init_ramstart: */
 extern uint32_t (* const func_map[])(uint32_t*);
 #define func(addr) func_map[addr/4]

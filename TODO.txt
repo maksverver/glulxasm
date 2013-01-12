@@ -9,10 +9,6 @@ general:
    - use valgrind to find memory leaks?
 
 native:
-   - use linker script to allocate call stack, data stack and memory into
-     distinct locations, separated by enough pages so that call/data stack
-     overflows are detected?  (Warning: call stack grows down!)
-
    - undo code:
         make compression optional?
         limit total amount of memory used by undo stack (e.g. 4 times the

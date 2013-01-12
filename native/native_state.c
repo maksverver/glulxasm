@@ -11,7 +11,7 @@
     4 bytes: data stack size, D
     D bytes: data_stack[0:D)
     4 bytes: call stack size, C
-    C bytes: call_stack[init_stack_size - C, init_stack_size)
+    C bytes: call_stack[CALL_STACK_SIZE - C, CALL_STACK_SIZE)
     4 bytes: pointer to execution context
 
   All values are stored in native byte-order.
@@ -37,7 +37,7 @@ static void print_checksum(const uint32_t *data_sp, const char *call_sp)
     info("data stack checksum %08x",
          fnv1_32(data_stack, sizeof(*data_sp)*(data_sp - data_stack)));
     info("call stack checksum %08x",
-         fnv1_32(call_sp, call_stack + init_stack_size - call_sp));
+         fnv1_32(call_sp, call_stack + CALL_STACK_SIZE - call_sp));
 }
 */
 
@@ -45,7 +45,7 @@ static void print_checksum(const uint32_t *data_sp, const char *call_sp)
 char *native_serialize(uint32_t *data_sp, struct Context *ctx, size_t *size)
 {
     const char *call_sp  = (char*)ctx->esp,
-               *stack_end = call_stack + init_stack_size;
+               *stack_end = call_stack + CALL_STACK_SIZE;
     uint32_t data_stack_size, call_stack_size;
     size_t data_size;
     char *data, *pos;
@@ -112,17 +112,15 @@ struct Context *native_deserialize(char *data, size_t size)
     pos += init_endmem - init_ramstart;
 
     /* data stack */
-    memset(data_stack, 0, init_stack_size);  /* for debugging */
     memcpy(&data_stack_size, pos, sizeof data_stack_size);
     pos += sizeof data_stack_size;
     memcpy(data_stack, pos, data_stack_size);
     pos += data_stack_size;
 
     /* call stack */
-    memset(call_stack, 0, init_stack_size);  /* for debugging */
     memcpy(&call_stack_size, pos, sizeof call_stack_size);
     pos += sizeof call_stack_size;
-    memcpy(call_stack + init_stack_size - call_stack_size,
+    memcpy(call_stack + CALL_STACK_SIZE - call_stack_size,
            pos, call_stack_size);
     pos += call_stack_size;
 
@@ -133,7 +131,7 @@ struct Context *native_deserialize(char *data, size_t size)
 /*
     info("deserialized state");
     print_checksum((char*)data_stack + data_stack_size,
-                   call_stack + init_stack_size - call_stack_size);
+                   call_stack + CALL_STACK_SIZE - call_stack_size);
 */
 
     assert(pos == data + size);
