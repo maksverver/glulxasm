@@ -16,6 +16,11 @@
 #define NATIVE_VERSION_MINOR 1
 #define NATIVE_VERSION_REVIS 0
 
+enum IoSys {
+    IOSYS_NULL   = 0,
+    IOSYS_FILTER = 1,
+    IOSYS_GLK    = 2 };
+
 /* VM state. Initialized in bss_*.c */
 extern uint8_t          mem[];
 extern uint32_t         data_stack[];
@@ -56,10 +61,10 @@ void native_setiosys(uint32_t mode, uint32_t rock);
 void native_setrandom(uint32_t l1);
 void native_setstringtbl(uint32_t offset);
 void native_stkroll(uint32_t size, int32_t steps, uint32_t *sp);
-void native_streamchar(uint32_t ch);
-void native_streamnum(int32_t n);
+void native_streamchar(uint8_t ch, uint32_t *sp);
+void native_streamunichar(uint32_t ch, uint32_t *sp);
+void native_streamnum(int32_t n, uint32_t *sp);
 void native_streamstr(uint32_t offset, uint32_t *sp);
-void native_streamunichar(uint32_t ch);
 uint32_t *native_ustring_dup(uint32_t offset);
 uint32_t native_verify();
 int32_t native_ftonumz(float f);

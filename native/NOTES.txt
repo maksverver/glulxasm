@@ -5,6 +5,13 @@ Contains code from Glulxle (glkop.c) and Glk (gi_blorb.c) written by:
 
 -- 
 
+Unsupported non-optional Glulx features:
+ - executable code outside ROM
+ - absolute jumps
+ - indirect jumps (though indirect calls are OK)
+ - saving/restoring from a callback function (called through the filter I/O
+   subsystem) may not work
+
 To figure out:
  - packaging; into four files:
     executable
@@ -52,14 +59,14 @@ glulxercise.ulx:
     jumpform: 20 TESTS FAIL (indirect jump targets not supported)
     compare: pass
     stack: pass
-    gestalt: 3 TESTS FAIL (because filter subsystem is not supported)
+    gestalt: pass
     throw: 20 TESTS FAIL (catch/throw not supported)
     strings: pass
     ramstring: pass
- !! iosys: FAIL (and hangs the interpreter!)
+    iosys: pass
     iosys2: pass
-    filter: 11 TESTS FAIL (filter subsystem not supported)
-    nullio: 1 TEST FAILS
+    filter: pass
+    nullio: pass
     glk: pass
     gidispa: pass
     random: pass
@@ -89,5 +96,3 @@ glulxercise.ulx:
     fcompare: pass
     fprint: pass
     safari5: pass
-
-The failure of `iosys' is a regression!

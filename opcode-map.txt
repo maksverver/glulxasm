@@ -87,9 +87,9 @@ verify              s         L         s1 = native_verify();
 getiosys            ss        LL        native_getiosys(&s1, &s2);
 setiosys            ll        LL        native_setiosys(l1, l2);
 
-streamchar          l         L         native_streamchar(l1);
-streamunichar       l         l         native_streamunichar(l1);
-streamnum           l         l         native_streamnum(l1);
+streamchar          l         L         native_streamchar(l1, sp);
+streamunichar       l         l         native_streamunichar(l1, sp);
+streamnum           l         l         native_streamnum(l1, sp);
 streamstr           l         L         native_streamstr(l1, sp);
 getstringtbl        s         L         s1 = native_getstringtbl();
 setstringtbl        l         L         native_setstringtbl(l1);

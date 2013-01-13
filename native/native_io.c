@@ -86,24 +86,19 @@ uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp)
 
 void native_setiosys(uint32_t mode, uint32_t rock)
 {
+    cur_iosys_rock = rock;
+
     switch (mode)
     {
     default:
-        error("invalid I/O mode selected (%u, %u)", mode, rock);
-        cur_iosys_mode = mode;
-        cur_iosys_rock = rock;
-        break;
-
-    case 0:  /* null iosys */
+        error("unsupported I/O mode selected (%u, %u)", mode, rock);
         cur_iosys_mode = 0;
-        cur_iosys_rock = rock;
         break;
 
-    /* NB. case 1 missing because filter is not implemented */
-
-    case 2: /* Glk */
-        cur_iosys_mode = 2;
-        cur_iosys_rock = rock;
+    case IOSYS_NULL:
+    case IOSYS_FILTER:
+    case IOSYS_GLK:
+        cur_iosys_mode = mode;
         break;
     }
 }
@@ -174,36 +169,70 @@ void native_setstringtbl(uint32_t offset)
 #endif
 }
 
-static void native_put_string(char *s)
+static void filter_char_uni(uint32_t ch, uint32_t *sp)
 {
-    if (cur_iosys_mode == 2) glk_put_string(s);
+    sp[0] = ch;
+    sp[1] = 1;
+    func(cur_iosys_rock)(sp + 1);
 }
 
-static void native_put_string_uni(uint32_t *s)
+static void put_string(char *s, uint32_t *sp)
 {
-    if (cur_iosys_mode == 2) glk_put_string_uni(s);
+    if (cur_iosys_mode == IOSYS_GLK)
+    {
+        glk_put_string(s);
+    }
+    else
+    if (cur_iosys_mode != IOSYS_NULL)
+    {
+        while (*s) native_streamchar(*s++, sp);
+    }
 }
 
-static void native_put_char(uint32_t ch)
+static void put_string_uni(uint32_t *s, uint32_t *sp)
 {
-    if (cur_iosys_mode == 2) glk_put_char(ch);
+    if (cur_iosys_mode == IOSYS_GLK)
+    {
+        glk_put_string_uni(s);
+    }
+    else
+    if (cur_iosys_mode != IOSYS_NULL)
+    {
+        while (*s) native_streamunichar(*s++, sp);
+    }
 }
 
-static void native_put_char_uni(uint32_t ch)
+void native_streamchar(uint8_t ch, uint32_t *sp)
 {
-    if (cur_iosys_mode == 2) glk_put_char_uni(ch);
+    if (cur_iosys_mode == IOSYS_GLK)
+    {
+        glk_put_char(ch);
+    }
+    else
+    if (cur_iosys_mode == IOSYS_FILTER)
+    {
+         filter_char_uni(ch, sp);
+    }
 }
 
-void native_streamchar(uint32_t ch)
+void native_streamunichar(uint32_t ch, uint32_t *sp)
 {
-    native_put_char(ch);
+    if (cur_iosys_mode == IOSYS_GLK)
+    {
+        glk_put_char_uni(ch);
+    }
+    else
+    if (cur_iosys_mode == IOSYS_FILTER)
+    {
+        filter_char_uni(ch, sp);
+    }
 }
 
-void native_streamnum(int32_t n)
+void native_streamnum(int32_t n, uint32_t *sp)
 {
     char buf[12];
     snprintf(buf, sizeof(buf), "%d", n);
-    native_put_string(buf);
+    put_string(buf, sp);
 }
 
 /* Stream compressed stream data starting from `offset'. */
@@ -268,21 +297,21 @@ static void stream_compressed_string(uint32_t string_offset, uint32_t *sp)
             return;
 
         case 0x02:  /* single character */
-            native_put_char(get_byte(node_offset + 1));
+            native_streamchar(get_byte(node_offset + 1), sp);
             break;
 
         case 0x03:  /* C-style string */
-            native_put_string((char*)&mem[node_offset + 1]);
+            put_string((char*)&mem[node_offset + 1], sp);
             break;
 
         case 0x04:  /* Unicode character */
-            native_put_char_uni(get_long(node_offset + 1));
+            native_streamunichar(get_long(node_offset + 1), sp);
             break;
 
         case 0x05:  /* Unicode string */
             {
                 uint32_t *p = native_ustring_dup(node_offset + 1);
-                native_put_string_uni(p);
+                put_string_uni(p, sp);
                 free(p);
             } break;
 
@@ -345,14 +374,14 @@ void native_streamstr(uint32_t offset, uint32_t *sp)
     {
     case 0xe0:  /* unencoded C-string */
         {
-            native_put_string((char *)&mem[offset + 1]);
+            put_string((char *)&mem[offset + 1], sp);
         } break;
 
     case 0xe2:  /* unencoded unicode string */
         {
             /* We need a temp-string to fix alignment & byte order */
             uint32_t *p = native_ustring_dup(offset + 4);
-            native_put_string_uni(p);
+            put_string_uni(p, sp);
             free(p);
         }
         break;
@@ -364,11 +393,6 @@ void native_streamstr(uint32_t offset, uint32_t *sp)
     default:
         error("invalid string object type (0x%02x)", type);
     }
-}
-
-void native_streamunichar(uint32_t ch)
-{
-    glk_put_char_uni(ch);
 }
 
 uint32_t *native_ustring_dup(uint32_t offset)

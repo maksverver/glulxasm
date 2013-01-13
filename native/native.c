@@ -86,10 +86,12 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
     case 4:  /* IOSystem */
         switch (argument)
         {
-        case 0: return 1;  /* null */
-        case 1: return 0;  /* filter */
-        case 2: return 1;  /* glk */
-        default: return 0;  /* others? */
+        case IOSYS_NULL:
+        case IOSYS_FILTER:
+        case IOSYS_GLK:
+            return 1;
+        default:
+            return 0;
         }
 
     case 5:  /* Unicode */
@@ -99,7 +101,7 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
         return 1; /* mzero/mcopy supported */
 
     case 7: /* MAlloc */
-        return 1;  /* malloc/mfree opcodes supported */
+        return 0;  /* malloc/mfree opcodes supported  */
 
     case 8: /* MAllocHeap */
         return 0;  /* offset of heap, or 0 if not used */
@@ -108,10 +110,7 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
         return 1;  /* accelfunc/accelparam opcodes supported */
 
     case 10: /* AccelFunc */
-        switch (argument)
-        {
-            default: return 0;  /* unknown function */
-        }
+        return 0;  /* unknown function */
 
     case 11: /* Float */
         return 1;  /* floating point opcodes supported */
