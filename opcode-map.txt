@@ -115,8 +115,8 @@ glk                 lls       LLL       s1 = native_glk(l1, l2, &sp);
 numtof              ls        lf        s1 = (float)l1;
 ftonumz             ls        fl        s1 = native_ftonumz(l1);
 ftonumn             ls        fl        s1 = native_ftonumn(l1);
-ceil                ls        ff        s1 = (int)ceilf(l1);
-floor               ls        ff        s1 = (int)floorf(l1);
+ceil                ls        ff        s1 = ceilf(l1);
+floor               ls        ff        s1 = floorf(l1);
 
 fadd                lls       fff       s1 = l1 + l2;
 fsub                lls       fff       s1 = l1 - l2;

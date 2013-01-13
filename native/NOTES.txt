@@ -80,7 +80,7 @@ glulxercise.ulx:
     floatconv: pass
     floatarith: pass
     floatmod: pass
-  ! floatround: 13 TESTS FAIL
+    floatround: pass
     floatexp: pass
     floattrig: 2 TESTS FAIL (off-by-one due to precision loss/rounding mode)
     floatatan2: pass
