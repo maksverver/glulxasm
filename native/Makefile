@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -O0 -I$(GLKINC) -Imxml/ -g -m32 -march=i686 -msse -mfpmath=sse
+CFLAGS=-Wall -Wextra -O0 -I$(GLKINC) -Imxml/ -g -m32 -march=pentium4 -mtune=generic
 LDLIBS=$(GLKLIBS) mxml/libmxml.a -lm
 LDFLAGS=-Wl,--no-export-dynamic -Wl,--exclude-libs=ALL -Wl,--as-needed -Tstory.lds
 

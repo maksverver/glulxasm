@@ -82,7 +82,7 @@ glulxercise.ulx:
     floatmod: pass
   ! floatround: 13 TESTS FAIL
     floatexp: pass
-  ! floattrig: 4 TESTS FAIL
+    floattrig: 2 TESTS FAIL (off-by-one due to precision loss/rounding mode)
     floatatan2: pass
     fjumpform: 5 TESTS FAIL (indirect jump targets not supported)
   ! fjump: 14 TESTS FAIL
