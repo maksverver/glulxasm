@@ -375,27 +375,62 @@ static size_t write_cmem(strid_t stream, const uint8_t *data, size_t size)
     return written;
 }
 
+/* Saving/restoring code follows.  BEWARE!  This is still a huge mess, and not
+   at all secure (though some sanity checks are present).  I should probably
+   simplify the whole process by separating the IFF parsing/formatting from
+   the state encoding/decoding, and representing the IFF chunks as a tree
+   structure in memory.
+
+   The main advantage of the current approach is that it doesn't require any
+   extra memory, but it's really not worth the additional complexity! */
+
+/* Total size of header data in IFZS save file format: */
+static const size_t IFZS_form_overhead =
+    4 /* IFZS */ +
+    8 /* IFhd+size */ + 128 /* ifhd */ +
+    8 /* xMem+size */ +   4 /* ram_size */ +
+    8 /* xstk+size */ +  16 /* bin.id */ ;
+
 void native_save_serialized(const char *data, size_t size, strid_t stream)
 {
+    const bool compress_memory = true;  /* CMem or UMem chunks? */
     const size_t ram_size = init_endmem - init_ramstart;
+    size_t form_size = size, cmem_size = 0;
+
+    if (compress_memory)
+    {
+        cmem_size = write_cmem(NULL, (const uint8_t*)data, ram_size);
+        form_size -= ram_size;
+        form_size += (cmem_size + 1)&~1;
+    }
+
+    form_size += IFZS_form_overhead;
 
     write_fourcc(stream, "FORM");
-    write_uint32(stream, size + 8*4 + 128);
+    write_uint32(stream, form_size);
+    assert((form_size&1) == 0);
+
     write_fourcc(stream, "IFZS");
     write_fourcc(stream, "IFhd");
     write_uint32(stream, 128);
     glk_put_buffer_stream(stream, (char*)mem, 128);
 
-    /*
-    write_fourcc(stream, "UMem");
-    write_uint32(stream, 4 + ram_size);
-    write_uint32(stream, ram_size);
-    glk_put_buffer_stream(stream, (char*)data, ram_size);
-    */
-    write_fourcc(stream, "CMem");
-    write_uint32(stream, 4 + write_cmem(NULL, (const uint8_t*)data, ram_size));
-    write_uint32(stream, ram_size);
-    write_cmem(stream, (const uint8_t*)data, ram_size);
+    if (!compress_memory)
+    {
+        write_fourcc(stream, "UMem");
+        write_uint32(stream, 4 + ram_size);
+        write_uint32(stream, ram_size);
+        glk_put_buffer_stream(stream, (char*)data, ram_size);
+        assert((ram_size&1) == 0);
+    }
+    else
+    {
+        write_fourcc(stream, "CMem");
+        write_uint32(stream, 4 + cmem_size);
+        write_uint32(stream, ram_size);
+        write_cmem(stream, (const uint8_t*)data, ram_size);
+        if (cmem_size&1) glk_put_char_stream(stream, 0);  /* 16-bit alignment */
+    }
     data += ram_size;
     size -= ram_size;
 
@@ -415,7 +450,7 @@ char *native_restore_serialized(strid_t stream, size_t *size_out)
 {
     const size_t ram_size = init_endmem - init_ramstart;
     char buf[128], *data = NULL;
-    size_t size = 0;
+    size_t size = 0, form_size, cmem_size;
 
     /* Verify file header: */
     if (glk_get_buffer_stream(stream, buf, 12) != 12 ||
@@ -425,13 +460,7 @@ char *native_restore_serialized(strid_t stream, size_t *size_out)
         error("wrong file type");
         goto failed;
     }
-
-    /* Allocate memory */
-    size = get_uint32(buf + 4);
-    if (size < 8*4 + 128 + ram_size) goto failed;
-    size -= 8*4 + 128;
-    data = malloc(size);
-    if (data == NULL) goto failed;
+    form_size = get_uint32(buf + 4);
 
     /* Check IFhd */
     if (glk_get_buffer_stream(stream, buf, 8) != 8 ||
@@ -451,11 +480,22 @@ char *native_restore_serialized(strid_t stream, size_t *size_out)
     /* Read memory chunk */
     if (glk_get_buffer_stream(stream, buf, 12) != 12 ||
         (memcmp(buf, "UMem", 4) != 0 && memcmp(buf, "CMem", 4) != 0) ||
-        get_uint32(buf + 8) != ram_size)
+        get_uint32(buf + 4) <= 4 || get_uint32(buf + 8) != ram_size)
     {
         error("invalid/missing UMem/CMem chunk");
         goto failed;
     }
+
+    /* Allocate memory: */
+    cmem_size = get_uint32(buf + 4) - 4;
+    size = form_size - IFZS_form_overhead - ((cmem_size + 1) & ~1) + ram_size;
+    data = malloc(size);
+    if (data == NULL)
+    {
+        error("out of memory");
+        goto failed;
+    }
+
     if (memcmp(buf, "UMem", 4) == 0)
     {
         if (get_uint32(buf + 4) != 4 + ram_size ||
@@ -468,8 +508,8 @@ char *native_restore_serialized(strid_t stream, size_t *size_out)
     else
     if (memcmp(buf, "CMem", 4) == 0)
     {
-        size_t csize = get_uint32(buf + 4) - 4, i, j;
-        for (i = j = 0; i < csize; ++i)
+        size_t i, j;
+        for (i = j = 0; i < cmem_size; ++i)
         {
             int ch = glk_get_char_stream(stream);
             if (ch < 0)
@@ -479,7 +519,7 @@ char *native_restore_serialized(strid_t stream, size_t *size_out)
             }
             if (ch == 0)
             {
-                int n = (i + 1 < csize) ? glk_get_char_stream(stream) : -1;
+                int n = (i + 1 < cmem_size) ? glk_get_char_stream(stream) : -1;
                 if (n < 0)
                 {
                     error("failed to read CMem chunk");
@@ -493,12 +533,13 @@ char *native_restore_serialized(strid_t stream, size_t *size_out)
                 if (j < ram_size) data[j++] = ch;
             }
         }
-        assert(i == csize);
+        assert(i == cmem_size);
         while (j < ram_size) data[j++] = 0;
         for (j = init_ramstart; j < glulx_size; ++j)
         {
             data[j - init_ramstart] ^= glulx_data[j];
         }
+        if (cmem_size&1) (void)glk_get_char_stream(stream);  /* padding byte */
     }
 
     /* Read XStk chunk */
