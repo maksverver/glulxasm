@@ -16,7 +16,6 @@ native:
    - load storycode from DLL/.so
      (requires storing stack in position-independent format, or loading the
       storycode at a fixed address!)
-   - better storycode binary id (hashcode of func_map + address of start()?)
    - maybe: support for native accellerated functions?
             (this might not be necessary; need to check generated code,
              and test performance impact of making function table non-const)

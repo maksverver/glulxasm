@@ -17,7 +17,6 @@
   All values are stored in native byte-order.
 */
 
-/*
 static uint32_t fnv1_32(const void *data, size_t size)
 {
     const unsigned char *p = data;
@@ -30,6 +29,29 @@ static uint32_t fnv1_32(const void *data, size_t size)
     return hash;
 }
 
+/* Calculates a 16-byte identifier for the storycode, which is used to detect
+   (in)compatible saved states.
+
+   For now, I just record the call stack location and a checksum of the
+   func_map[] array, which is a reasonable approximation of the generated code
+   (in that it cover function addresses and sizes).
+
+   Note: this function is not re-entrant until after it has been called once!
+*/
+static const char *get_binary_id(void)
+{
+    static uint32_t bin_id[4];
+    if (bin_id[0] == 0)
+    {
+        bin_id[0] = (uint32_t)call_stack;
+        bin_id[1] = fnv1_32(func_map, init_ramstart);
+        bin_id[2] = 0;  /* unused for now */
+        bin_id[3] = 0;  /* unused for now */
+    }
+    return (char*)bin_id;
+}
+
+/*
 static void print_checksum(const uint32_t *data_sp, const char *call_sp)
 {
     info("memory checksum     %08x",
@@ -351,19 +373,6 @@ static size_t write_cmem(strid_t stream, const uint8_t *data, size_t size)
         written += 2;
     }
     return written;
-}
-
-/* Returns pointer to a 16-byte binary identifier that can be used to verify
-   whether savegames are binary compatible with this release.  (In particular,
-   the call stack must be allocated to the same address!) */
-static const char *get_binary_id(void)
-{
-    static uint32_t bin_id[4];
-    bin_id[0] = (uint32_t)call_stack;
-    bin_id[1] = 0;
-    bin_id[2] = 0;
-    bin_id[3] = 0;
-    return (char*)bin_id;
 }
 
 void native_save_serialized(const char *data, size_t size, strid_t stream)
