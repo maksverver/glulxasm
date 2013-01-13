@@ -122,7 +122,7 @@ fadd                lls       fff       s1 = l1 + l2;
 fsub                lls       fff       s1 = l1 - l2;
 fmul                lls       fff       s1 = l1 * l2;
 fdiv                lls       fff       s1 = l1 / l2;
-fmod                llss      ffff      s1 = fmodf(l1, l2); s2 = truncf(l1/l2);
+fmod                llss      ffff      s1 = fmodf(l1, l2); s2 = truncf(l1/l2); if (s1 != s1) s1 = l1*NAN, s2 *= NAN;
 sqrt                ls        ff        s1 = sqrtf(l1);
 exp                 ls        ff        s1 = expf(l1);
 log                 ls        ff        s1 = logf(l1);

@@ -79,7 +79,7 @@ glulxercise.ulx:
     acceleration: "pass" (but accelerated functions are not supported)
     floatconv: pass
     floatarith: pass
-  ! floatmod: 3 TESTS FAIL
+    floatmod: pass
   ! floatround: 13 TESTS FAIL
     floatexp: pass
   ! floattrig: 4 TESTS FAIL
