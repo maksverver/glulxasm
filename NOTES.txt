@@ -1,3 +1,9 @@
+The glulx-assembler is completely outdated! See ../glulxcc/binutils for a
+much better implementation with a different assembly syntax.
+
+The disassembler is still working and mainly used to generate C code; the
+assembly code it generates is obsolete.
+
 Psuedo-instructions:
 
     version(a,b,c)                  change version number in header
