@@ -19,7 +19,7 @@ struct Undo {
     size_t size;
 };
 
-static struct Context *story_start  = NULL;
+struct Context *start_ctx = NULL;  /* also used in native_state.c */
 static struct Undo *undo = NULL;
 static char *restore_data = NULL;
 static size_t restore_size = 0;
@@ -146,7 +146,7 @@ void native_mfree(uint32_t offset)
 void native_quit()
 {
     /* Signal quit */
-    context_restore(story_start, (void*)SIGNAL_QUIT);
+    context_restore(start_ctx, (void*)SIGNAL_QUIT);
 }
 
 void native_reset()
@@ -184,14 +184,14 @@ void native_reset()
 void native_restart()
 {
     /* Signal restart */
-    context_restore(story_start, (void*)SIGNAL_RESTART);
+    context_restore(start_ctx, (void*)SIGNAL_RESTART);
 }
 
 uint32_t native_restoreundo()
 {
     /* Signal undo */
     if (undo == NULL) return 1;  /* error: no undo data available */
-    context_restore(story_start, (void*)SIGNAL_UNDO);  /* should not return */
+    context_restore(start_ctx, (void*)SIGNAL_UNDO);  /* should not return */
     return 1; /* indicates failure! */
 }
 
@@ -202,7 +202,7 @@ uint32_t native_restore(uint32_t stream_id)
     if (!stream) return 1;  /* indicates failure! */
     restore_data = native_restore_serialized(stream, &restore_size);
     if (restore_data == NULL) return 1;  /* indicates failure! */
-    context_restore(story_start, (void*)SIGNAL_RESTORE); /* does not return */
+    context_restore(start_ctx, (void*)SIGNAL_RESTORE); /* does not return */
     return 1;  /* indicates failure! */
 }
 
@@ -307,7 +307,7 @@ void native_start()
             native_reset();
             info("restart");
             sig = (int)context_start(call_stack, CALL_STACK_SIZE,
-                                     init_start_thunk, (void*)&story_start);
+                                     init_start_thunk, (void*)&start_ctx);
             break;
 
         case SIGNAL_UNDO:

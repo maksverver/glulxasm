@@ -41,11 +41,12 @@ static uint32_t fnv1_32(const void *data, size_t size)
 static const char *get_binary_id(void)
 {
     static uint32_t bin_id[4];
+    extern struct Context *start_ctx;
     if (bin_id[0] == 0)
     {
-        bin_id[0] = (uint32_t)call_stack;
-        bin_id[1] = fnv1_32(func_map, init_ramstart);
-        bin_id[2] = 0;  /* unused for now */
+        bin_id[0] = fnv1_32(func_map, init_ramstart);
+        bin_id[1] = (uint32_t)call_stack;
+        bin_id[2] = (uint32_t)start_ctx;
         bin_id[3] = 0;  /* unused for now */
     }
     return (char*)bin_id;
