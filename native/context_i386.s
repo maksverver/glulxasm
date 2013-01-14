@@ -1,8 +1,10 @@
-.global context_start
-.global context_restart
-.global context_save
-.global context_restore
-.global context_sp
+#if defined(__WIN32__)
+    #define CDECL(s) _##s
+#else
+    #define CDECL(s) s
+#endif
+
+#define EXPORT(s) .global CDECL(s); CDECL(s): 
 
 #   +--------------+  <--  stack + size
 #   |  return SP   |
@@ -18,7 +20,7 @@
 #   +--------------+  <-- stack
 
 
-context_start:
+EXPORT(context_start)
     pushl   %ebp
     movl    %esp, %ebp
 
@@ -38,7 +40,7 @@ return_from_context:
     ret
 
 
-context_restart:
+EXPORT(context_restart)
     pushl   %ebp
     movl    %esp, %ebp
 
@@ -50,14 +52,14 @@ context_restart:
 
     pushl   20(%ebp)            # arg
     pushl   16(%ebp)            # context ptr
-    call    context_restore     # (does not return)
+    call    CDECL(context_restore)  # (does not return)
 
     int     $3                  # we should never get here!
     popl    %ebp
     ret
 
 
-context_save:
+EXPORT(context_save)
     movl    4(%esp), %edx       # edx = context ptr
     movl    (%esp), %eax        # eax = return IP
     movl    %ebx,    0(%edx)
@@ -70,7 +72,7 @@ context_save:
     ret
 
 
-context_restore:
+EXPORT(context_restore)
     movl    4(%esp), %edx       # edx = context ptr
     movl    8(%esp), %eax       # eax = arg (value to return from context_save)
 
@@ -85,6 +87,6 @@ context_restore:
     ret
 
 
-context_sp:
+EXPORT(context_sp)
     movl    %esp, %eax
     ret

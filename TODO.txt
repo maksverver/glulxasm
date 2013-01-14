@@ -1,4 +1,8 @@
  - Check if everything still works on Windows.
+   (Need to check loading/saving, image loading, sound effects...)
+
+Makefile:
+ - linker script doesn't seem to yield a valid executable on Windows 
 
 garglk:
    - seems to be missing fonts?
