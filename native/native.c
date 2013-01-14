@@ -250,23 +250,6 @@ failed:
     return 1;
 }
 
-static void *start(void *arg)
-{
-    void *res;
-    struct Context ctx;
-
-    (void)arg;  /* unused */
-    story_start = &ctx;
-    res = context_save(story_start);
-    if (res == NULL)
-    {
-        /* Invoke start function */
-        data_stack[0] = 0;
-        func(init_start_func)(&data_stack[0]);
-    }
-    return res;
-}
-
 static int pop_undo_state()
 {
     struct Context *ctx;
@@ -323,7 +306,8 @@ void native_start()
         case SIGNAL_RESTART:
             native_reset();
             info("restart");
-            sig = (int)context_start(call_stack, CALL_STACK_SIZE, start, NULL);
+            sig = (int)context_start(call_stack, CALL_STACK_SIZE,
+                                     init_start_thunk, (void*)&story_start);
             break;
 
         case SIGNAL_UNDO:

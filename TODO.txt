@@ -1,4 +1,4 @@
-Must debug regressions introduced in native code! (See native/NOTES.txt!)
+ - Check if everything still works on Windows.
 
 garglk:
    - seems to be missing fonts?

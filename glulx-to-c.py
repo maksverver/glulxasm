@@ -93,6 +93,20 @@ def main(path = None):
     print 'const uint32_t init_decoding_tbl = DECODING_TBL;'
     print 'const uint32_t init_checksum     = CHECKSUM;'
     print ''
+    print 'void *init_start_thunk(void *ctx_out)'
+    print '{'
+    print '    void *res;'
+    print '    struct Context ctx;'
+    print '    *(struct Context **)ctx_out = &ctx;'
+    print '    res = context_save(&ctx);'
+    print '    if (res == NULL)'
+    print '    {'
+    print '        data_stack[0] = 0;'
+    print '        func(init_start_func)(data_stack);'
+    print '    }'
+    print '    return res;'
+    print '}'
+    print ''
 
     for f in functions:
         print 'uint32_t %s(uint32_t*);' % func_name(f)

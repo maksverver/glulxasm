@@ -17,5 +17,6 @@ extern const uint32_t init_checksum;
 extern uint32_t (* const func_map[])(uint32_t*);
 #define func(addr) func_map[addr/4]
 
+void *init_start_thunk(void *ctx_out);
 
 #endif /* ndef STORYFILE_H_INCLUDED */

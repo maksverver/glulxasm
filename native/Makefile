@@ -1,9 +1,10 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -O0 -I$(GLKINC) -Imxml/ -g -m32 -march=pentium4 -mtune=generic
+COMMON_CFLAGS=-Wall -Wextra -O0 -g -m32 -march=pentium4 -mtune=generic
+CFLAGS=$(COMMON_CFLAGS) -I$(GLKINC) -Imxml/
+STORY_CFLAGS=$(COMMON_CFLAGS) -Wno-unused-variable -Wno-unused-but-set-variable
 LDLIBS=$(GLKLIBS) mxml/libmxml.a -lm
 LDFLAGS=-Wl,--no-export-dynamic -Wl,--exclude-libs=ALL -Wl,--as-needed -Tstory.lds
 
-STORYFILE_CFLAGS=$(CFLAGS) -Wno-unused-variable -Wno-unused-but-set-variable
 
 OBJS=glkop.o main.o messages.o native.o native_float.o native_io.o \
 	native_protect.o native_search.o native_state.o native_rng.o \
@@ -31,7 +32,7 @@ storycode.c: storyfile.dat
 	(cd .. && ./glulx-to-c.py) <storyfile.dat >storycode.c
 
 storycode.o: storycode.c
-	$(CC) $(STORYFILE_CFLAGS) -c storycode.c
+	$(CC) $(STORY_CFLAGS) -c storycode.c
 
 # For embedding story data file into the executable:
 storyfile.o: storyfile.dat
