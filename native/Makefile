@@ -1,6 +1,6 @@
 CC=gcc
 PYTHON=python
-COMMON_CFLAGS=-Wall -Wextra -O2 -g -m32 -march=pentium4 -mtune=generic
+COMMON_CFLAGS=-Wall -Wextra -O2 -m32 -march=pentium4 -mtune=generic
 CFLAGS=$(COMMON_CFLAGS) -I$(GLK_INC) -I$(MXML_INC)
 STORY_CFLAGS=$(COMMON_CFLAGS) -Wno-unused-variable -Wno-unused-but-set-variable
 LDLIBS=$(GLK_LIBS) $(MXML_LIBS) -lm
