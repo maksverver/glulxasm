@@ -1,0 +1,15 @@
+include Makefile
+
+# Customize these settings!
+
+PYTHON=C:/Python26/python.exe
+
+MXML_INC=C:/Libraries/mxml-2.7/
+MXML_LIBS=C:/Libraries/mxml-2.7/libmxml.a
+
+GLK_INC=C:/Libraries/gargoyle-2011.1/garglk
+GLK_LIBS=C:/Libraries/gargoyle-2011.1/build/mingw.release/garglk/libgarglkmain.a \
+	C:/Libraries/gargoyle-2011.1/build/dist/libgarglk.dll
+CFLAGS+=-DGARGLK
+
+LDFLAGS+=-mwindows
