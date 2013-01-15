@@ -178,6 +178,11 @@ def disassemble(data):
     skipped = []
     while offset < header.ramstart:
 
+        if offset == header.decoding_tbl:
+            # Skip string decoding table entirely:
+            offset += unpack(data, offset, 4)
+            continue
+
         if ops[offset] is None:
             decode_function(data, offset, ops)
 
