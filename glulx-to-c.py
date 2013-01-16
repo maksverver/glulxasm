@@ -70,10 +70,10 @@ def main(path = None):
         if isinstance(o, Instr):
             instructions[-1].append(o)
 
-    func_map = [ None ] * (header.ramstart/4)
+    func_map = [ None ] * (header.ramstart//4)
     for f in functions:
-        assert func_map[f.offset()/4] is None
-        func_map[f.offset()/4] = f
+        assert func_map[f.offset()//4] is None
+        func_map[f.offset()//4] = f
 
     print '#include "storycode.h"'
     print ''
@@ -109,12 +109,15 @@ def main(path = None):
     print ''
 
     for f in functions:
-        print 'uint32_t %s(uint32_t*);' % func_name(f)
+        print 'static uint32_t %s(uint32_t*);' % func_name(f)
+        if f.type == 0xc1:  # local args
+            print 'static uint32_t %s_args(uint32_t*%s);' % \
+                    (func_name(f), f.nlocal*', uint32_t')
     print ''
 
     print 'uint32_t (* const func_map[RAMSTART/4 + 1])(uint32_t*) = {'
     line = '\t'
-    for i in range(0, header.ramstart/4):
+    for i in range(0, header.ramstart//4):
         if func_map[i] is None: line += '0, '
         else:                   line += '&' + func_name(func_map[i]) + ', '
         if len(line) > 60:
@@ -125,21 +128,26 @@ def main(path = None):
     del line
 
     for (f, instrs) in zip(functions, instructions):
-        print 'uint32_t %s(uint32_t *sp)' % func_name(f)
+        print 'static uint32_t %s(uint32_t *sp)' % func_name(f)
         print '{'
 
-        nlocal = sum([ count for size,count in f.locals ])
         if f.type == 0xc0:  # stack args
             print '\tuint32_t * const bp = sp - *sp;'
-            for n in range(nlocal):
+            for n in range(f.nlocal):
                 print '\tuint32_t loc%d = 0;' % n
             print '\t++sp;'
         elif f.type == 0xc1:  # local args
+            print '\tuint32_t narg = *sp;'
+            for n in range(f.nlocal):
+                print '\tuint32_t loc%d = (narg > %d) ? *--sp : 0;' % (n, n)
+            print '\treturn %s_args(%s);' % ( func_name(f),
+                ', '.join(['sp']+['loc%d'%n for n in range(f.nlocal)]) )
+            print '}'
+            print 'static uint32_t %s_args(%s)' % ( func_name(f),
+                ', '.join( ['uint32_t *sp'] +
+                           ['uint32_t loc%d'%n for n in range(f.nlocal)] ) )
+            print '{'
             print '\tuint32_t * const bp = sp;'
-            if nlocal > 0:
-                print '\tuint32_t narg = *sp;'
-                for n in range(nlocal):
-                    print '\tuint32_t loc%d = (narg > %d) ? *--sp : 0;' % (n, n)
         else:
             assert 0
 
@@ -153,6 +161,17 @@ def main(path = None):
                 print 'a%08x: {' % instr.offset()
             else:
                 print '\t{ /* %08x */' % instr.offset()
+
+            if instr.mnemonic.startswith('callf') and \
+                    instr.operands[0].is_immediate():
+
+                # Shortcut call to known function:
+                f = func_map[instr.operands[0].value()//4]
+                if f and f.type == 0xc1:
+                    args = [ 'l%d'%(n + 2) if 1 < n + 2 < len(param) else '0'
+                                           for n in range(f.nlocal) ]
+                    code = 's1 = %s_args(%s);' % \
+                        (func_name(f), ', '.join(['sp'] + args))
 
             ids = range(1, len(param) + 1)
             num_load = num_store = 0
@@ -184,7 +203,7 @@ def main(path = None):
                         v = '%s(%d + RAMSTART)' % (getter(s), o.value())
                     elif o.is_local_ref():
                         assert o.value()%4 == 0
-                        v = 'loc%d' % (o.value()/4)
+                        v = 'loc%d' % (o.value()//4)
                     elif o.is_stack_ref():
                         v = '(%s)*--sp' % (t,)
                     else:
@@ -235,7 +254,7 @@ def main(path = None):
                         print '\t\t%s(%d + RAMSTART, %s);' % \
                             (setter(s), o.value(), v)
                     elif o.is_local_ref():
-                        print '\t\tloc%d = %s;' % (o.value()/4, v)
+                        print '\t\tloc%d = %s;' % (o.value()//4, v)
                     elif o.is_stack_ref():
                         print '\t\t*sp++ = %s;' % (v,)
                     else:

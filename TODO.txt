@@ -1,3 +1,10 @@
+code generation optimizations:
+ - eliminate writing temporary values in functions to stack (requires flow
+   analysis/balanced stack operations), then:
+ - eliminate sp parameter for _args functions that don't need it (recursively!)
+ - consider turning functions into vararg functions, eliminating the data
+   stack altogether?
+
 Makefile:
  - linker script doesn't seem to yield a valid executable on Windows 
 
@@ -17,6 +24,11 @@ native:
    - load storycode from DLL/.so
      (requires storing stack in position-independent format, or loading the
       storycode at a fixed address!)
+
+   - 50% of time is spent in binary search, specifically accellerated
+     function FUNC_2_CP__Tab().  I should try to either fast-path this function
+     or cache some of its results!
+
    - maybe: support for native accellerated functions?
             (this might not be necessary; need to check generated code,
              and test performance impact of making function table non-const)

@@ -241,9 +241,6 @@ class Instr(Op):
     def is_branch(self):
         return self.parameters.find('b') >= 0 or self.parameters.find('a') >= 0
 
-    def is_call(self):
-        return self.parameters.find('f') >= 0
-
     def return_value(self):
         # NOTE: currently only works for branches
         i = self.parameters.find('b')
@@ -463,10 +460,12 @@ class Func(Op):
     def __init__(self, type, locals, offset = 0):
         self.type   = type
         self.locals = locals
+        self.nlocal = 0
         data = pack(self.type, 1)
         for (size,count) in locals:
             data += pack(size, 1)
             data += pack(count, 1)
+            self.nlocal += count
         data += pack(0, 2)
         Op.__init__(self, data, offset)
 
