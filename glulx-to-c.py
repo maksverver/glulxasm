@@ -181,12 +181,12 @@ def main(path = None):
                     elif o.is_mem_ref():
                         v = '%s(%d)' % (getter(s), o.value()&0xffffffff)
                     elif o.is_ram_ref():
-                        v = '%s(%d + RAMSTART);' % (getter(s), o.value())
+                        v = '%s(%d + RAMSTART)' % (getter(s), o.value())
                     elif o.is_local_ref():
                         assert o.value()%4 == 0
                         v = 'loc%d' % (o.value()/4)
                     elif o.is_stack_ref():
-                        v = '(%s)*--sp;' % (t,)
+                        v = '(%s)*--sp' % (t,)
                     else:
                         assert 0
 
