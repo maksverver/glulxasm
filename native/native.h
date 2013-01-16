@@ -40,7 +40,7 @@ uint32_t native_linkedsearch(
 void native_debugtrap(uint32_t argument);
 uint32_t native_gestalt(uint32_t selector, uint32_t argument);
 void native_getiosys(uint32_t *mode, uint32_t *rock);
-uint32_t native_getmemsize();
+#define native_getmemsize() (init_endmem)
 uint32_t native_getstringtbl();
 uint32_t native_glk(uint32_t selector, uint32_t narg, uint32_t **sp);
 void native_invalidop(uint32_t offset, const char *descr);

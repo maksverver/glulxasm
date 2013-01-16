@@ -120,10 +120,8 @@ uint32_t native_gestalt(uint32_t selector, uint32_t argument)
     }
 }
 
-uint32_t native_getmemsize()
-{
-    return init_endmem;
-}
+#undef native_getmemsize
+uint32_t native_getmemsize() { return init_endmem; }
 
 void native_invalidop(uint32_t offset, const char *descr)
 {
