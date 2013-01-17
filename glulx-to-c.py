@@ -3,6 +3,7 @@
 import glulxd
 import sys
 from Ops import *
+from analyze import optimize
 
 # Maps mnemonics to 3-tuple of parameters, sizes and code.
 opcode_map = {}
@@ -49,6 +50,9 @@ def setter(size):
     if size in ('L', 'l'): return 'set_long'
     if size == 'f':        return 'set_long'
     assert 0
+
+def sp_name(i):
+    return ('sp_%d'%i).replace('-', 'n')
 
 def main(path = None):
     read_opcode_map()
@@ -128,6 +132,11 @@ def main(path = None):
     del line
 
     for (f, instrs) in zip(functions, instructions):
+
+        # Stack optimization: (determines where stack loads/stores occur,
+        # so they can be replaced with local variable references)
+        optimized = optimize(instrs)
+
         print 'static uint32_t %s(uint32_t *sp)' % func_name(f)
         print '{'
 
@@ -151,6 +160,13 @@ def main(path = None):
         else:
             assert 0
 
+        if optimized:
+            for i in optimized:
+                if i < 0:
+                    print '\tuint32_t %s = sp[%d];' % (sp_name(i), i)
+                else:
+                    print '\tuint32_t %s;' % sp_name(i)
+
         branch_targets = set([i.branch_target() for i in instrs])
         branch_targets.remove(None)
 
@@ -172,6 +188,26 @@ def main(path = None):
                                            for n in range(f.nlocal) ]
                     code = 's1 = %s_args(%s);' % \
                         (func_name(f), ', '.join(['sp'] + args))
+
+            if instr.mnemonic == 'call' or instr.mnemonic == 'tailcall':
+
+                if optimized:
+
+                    if instr.mnemonic == 'call':        res = 's1 ='
+                    elif instr.mnemonic == 'tailcall':  res = 'return'
+                    else:                               assert False
+
+                    assert instr.operands[1].is_immediate()
+                    n = instr.operands[1].value()
+                    h = instr.sp
+                    code = ''
+                    for i in range(h - n, h):
+                        code += 'sp[%d] = %s; ' % (i, sp_name(i))
+                    code += 'sp[%d] = %d; %s func(l1)(sp + %d);' % (h,n,res,h)
+
+                    # FIXME: should shortcut call to args() function if
+                    #        operands[0].is_immediate too.
+
 
             ids = range(1, len(param) + 1)
             num_load = num_store = 0
@@ -205,7 +241,10 @@ def main(path = None):
                         assert o.value()%4 == 0
                         v = 'loc%d' % (o.value()//4)
                     elif o.is_stack_ref():
-                        v = '(%s)*--sp' % (t,)
+                        if not optimized:
+                            v = '(%s)*--sp' % (t,)
+                        else:
+                            v = '(%s)%s' % (t, sp_name(o.value()))
                     else:
                         assert 0
 
@@ -248,6 +287,7 @@ def main(path = None):
                         v = 'float_to_long(%s)'%v
                     if o.is_immediate():
                         assert o.value() == 0
+                        print '\t\t(void)%s;'%v
                     elif o.is_mem_ref():
                         print '\t\t%s(%d, %s);' % (setter(s), o.value(), v)
                     elif o.is_ram_ref():
@@ -256,7 +296,10 @@ def main(path = None):
                     elif o.is_local_ref():
                         print '\t\tloc%d = %s;' % (o.value()//4, v)
                     elif o.is_stack_ref():
-                        print '\t\t*sp++ = %s;' % (v,)
+                        if not optimized:
+                            print '\t\t*sp++ = %s;' % (v,)
+                        else:
+                            print '\t\t%s = %s;' % (sp_name(o.value()), v)
                     else:
                         assert 0
                 else:

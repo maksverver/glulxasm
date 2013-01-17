@@ -117,7 +117,7 @@ def decode_instructions(data, start, instrs):
 
         # Recognize instruction which end a sequence of instructions:
         if instr.mnemonic not in ('tailcall', 'ret', 'throw', 'jump',
-                                  'absjump', 'quit', 'restart'):
+                                  'jumpabs', 'quit', 'restart'):
             # Queue next instruction:
             branches.append(offset + len(instr))
         else:

@@ -1,9 +1,12 @@
 code generation optimizations:
- - eliminate writing temporary values in functions to stack (requires flow
-   analysis/balanced stack operations), then:
+ - call _arg functions for call/tailcall functions when possible
+   (see FIXME in glulx-to-c.py)
  - eliminate sp parameter for _args functions that don't need it (recursively!)
  - consider turning functions into vararg functions, eliminating the data
    stack altogether?
+
+ - BUG: tailcall doesn't destroy the calling stack frame!
+        (it's more like a call+return without the memory optimization)
 
 Makefile:
  - linker script doesn't seem to yield a valid executable on Windows 

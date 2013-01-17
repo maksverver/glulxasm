@@ -81,14 +81,14 @@ glulxercise.ulx:
     memsize: "pass" (but setmemsize is not supported)
     undomemsize: "pass" (but setmemsize is not supported)
     undorestart: pass
-    heap: FAIL (heap allocation not supported)
-    undoheap: FAIL (heap allocation not supported)
+    heap: "pass" (but heap allocation is not supported)
+    undoheap: "pass" (but heap allocation is not supported)
     acceleration: "pass" (but accelerated functions are not supported)
     floatconv: pass
     floatarith: pass
     floatmod: pass
     floatround: pass
-    floatexp: pass
+    floatexp: 1 TESTS FAIL
     floattrig: 2 TESTS FAIL (off-by-one due to precision loss/rounding mode)
     floatatan2: pass
     fjumpform: 5 TESTS FAIL (indirect jump targets not supported)
