@@ -98,6 +98,10 @@ def main(path = None):
                         target = instr.call_target()
                         if target is None or func_map[target//4].needs_sp:
                             break
+                    else:
+                        (_, _, code) = opcode_map[instr.mnemonic]
+                        if 'sp' in code: # FIXME: should match whole words only!
+                            break
                 else:
                     f.needs_sp = False
                     changed = True
@@ -170,13 +174,15 @@ def main(path = None):
             for n in range(func.nlocal):
                 print '\tuint32_t loc%d = (narg > %d) ? *--sp : 0;' % (n, n)
             print '\treturn %s_args(%s);' % ( func_name(func),
-                ', '.join(['sp']+['loc%d'%n for n in range(func.nlocal)]) )
+                ', '.join( func.needs_sp*['sp'] +
+                           ['loc%d'%n for n in range(func.nlocal)] ) )
             print '}'
             print 'static uint32_t %s_args(%s)' % ( func_name(func),
                 ', '.join( func.needs_sp*['uint32_t *sp'] +
                            ['uint32_t loc%d'%n for n in range(func.nlocal)] ) )
             print '{'
-            print '\tuint32_t * const bp = sp;'
+            if func.needs_sp:
+                print '\tuint32_t * const bp = sp;'
         else:
             assert 0
 

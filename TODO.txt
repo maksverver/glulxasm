@@ -1,7 +1,6 @@
 code generation optimizations:
  - call _arg functions for call/tailcall functions when possible
    (see FIXME in glulx-to-c.py)
- - eliminate sp parameter for _args functions that don't need it (recursively!)
  - consider turning functions into vararg functions, eliminating the data
    stack altogether?
 

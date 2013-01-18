@@ -29,9 +29,9 @@ def analyze_control_flow(instrs):
 
             edges.append((i, i + 1))
 
-        if instr.is_branch():
+        if instr.is_branch() and instr.return_value() is None:
             dest = instr.branch_target()
-            if not dest:
+            if dest is None:
                 print >>stderr, 'Skipping analysis due to unknown branch target'
                 return None
             if dest not in addrs:
