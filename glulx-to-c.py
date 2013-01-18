@@ -79,6 +79,29 @@ def main(path = None):
         assert func_map[f.offset()//4] is None
         func_map[f.offset()//4] = f
 
+    for (f, instrs) in zip(functions, instructions):
+        f.needs_sp = True
+        # Stack optimization: (determines where stack loads/stores occur,
+        # so they can be replaced with local variable references)
+        f.stack_refs = optimize(instrs)
+
+    # Try to remove stack pointer argument from functions that don't need it.
+    # These are leaf functions that (after stack optimization) don't change the
+    # stack, and don't call any other functions that require a stack argument:
+    changed = True
+    while changed:
+        changed = False
+        for (f, instrs) in zip(functions, instructions):
+            if f.needs_sp and f.local_args() and f.stack_refs is not None:
+                for instr in instrs:
+                    if instr.is_call():
+                        target = instr.call_target()
+                        if target is None or func_map[target//4].needs_sp:
+                            break
+                else:
+                    f.needs_sp = False
+                    changed = True
+
     print '#include "storycode.h"'
     print ''
     print '#define RAMSTART     ((uint32_t)%du)' % header.ramstart
@@ -115,8 +138,9 @@ def main(path = None):
     for f in functions:
         print 'static uint32_t %s(uint32_t*);' % func_name(f)
         if f.type == 0xc1:  # local args
-            print 'static uint32_t %s_args(uint32_t*%s);' % \
-                    (func_name(f), f.nlocal*', uint32_t')
+            print 'static uint32_t %s_args(%s);' % \
+                    (func_name(f), ','.join( f.needs_sp*["uint32_t*"] +
+                                             f.nlocal*['uint32_t'] ))
     print ''
 
     print 'uint32_t (* const func_map[RAMSTART/4 + 1])(uint32_t*) = {'
@@ -131,37 +155,33 @@ def main(path = None):
     print '#define func(addr) func_map[addr/4]\n'
     del line
 
-    for (f, instrs) in zip(functions, instructions):
+    for (func, instrs) in zip(functions, instructions):
 
-        # Stack optimization: (determines where stack loads/stores occur,
-        # so they can be replaced with local variable references)
-        optimized = optimize(instrs)
-
-        print 'static uint32_t %s(uint32_t *sp)' % func_name(f)
+        print 'static uint32_t %s(uint32_t *sp)' % func_name(func)
         print '{'
 
-        if f.type == 0xc0:  # stack args
+        if func.type == 0xc0:  # stack args
             print '\tuint32_t * const bp = sp - *sp;'
-            for n in range(f.nlocal):
+            for n in range(func.nlocal):
                 print '\tuint32_t loc%d = 0;' % n
             print '\t++sp;'
-        elif f.type == 0xc1:  # local args
+        elif func.type == 0xc1:  # local args
             print '\tuint32_t narg = *sp;'
-            for n in range(f.nlocal):
+            for n in range(func.nlocal):
                 print '\tuint32_t loc%d = (narg > %d) ? *--sp : 0;' % (n, n)
-            print '\treturn %s_args(%s);' % ( func_name(f),
-                ', '.join(['sp']+['loc%d'%n for n in range(f.nlocal)]) )
+            print '\treturn %s_args(%s);' % ( func_name(func),
+                ', '.join(['sp']+['loc%d'%n for n in range(func.nlocal)]) )
             print '}'
-            print 'static uint32_t %s_args(%s)' % ( func_name(f),
-                ', '.join( ['uint32_t *sp'] +
-                           ['uint32_t loc%d'%n for n in range(f.nlocal)] ) )
+            print 'static uint32_t %s_args(%s)' % ( func_name(func),
+                ', '.join( func.needs_sp*['uint32_t *sp'] +
+                           ['uint32_t loc%d'%n for n in range(func.nlocal)] ) )
             print '{'
             print '\tuint32_t * const bp = sp;'
         else:
             assert 0
 
-        if optimized:
-            for i in optimized:
+        if func.stack_refs:
+            for i in func.stack_refs:
                 if i < 0:
                     print '\tuint32_t %s = sp[%d];' % (sp_name(i), i)
                 else:
@@ -183,15 +203,16 @@ def main(path = None):
 
                 # Shortcut call to known function:
                 f = func_map[instr.operands[0].value()//4]
-                if f and f.type == 0xc1:
+                if f.type == 0xc1:
                     args = [ 'l%d'%(n + 2) if 1 < n + 2 < len(param) else '0'
                                            for n in range(f.nlocal) ]
                     code = 's1 = %s_args(%s);' % \
-                        (func_name(f), ', '.join(['sp'] + args))
+                        (func_name(f), ', '.join(f.needs_sp*['sp'] + args))
+                f = None  # I wish Python had lexical scoping
 
             if instr.mnemonic == 'call' or instr.mnemonic == 'tailcall':
 
-                if optimized:
+                if func.stack_refs:
 
                     if instr.mnemonic == 'call':        res = 's1 ='
                     elif instr.mnemonic == 'tailcall':  res = 'return'
@@ -241,7 +262,7 @@ def main(path = None):
                         assert o.value()%4 == 0
                         v = 'loc%d' % (o.value()//4)
                     elif o.is_stack_ref():
-                        if not optimized:
+                        if not func.stack_refs:
                             v = '(%s)*--sp' % (t,)
                         else:
                             v = '(%s)%s' % (t, sp_name(o.value()))
@@ -296,7 +317,7 @@ def main(path = None):
                     elif o.is_local_ref():
                         print '\t\tloc%d = %s;' % (o.value()//4, v)
                     elif o.is_stack_ref():
-                        if not optimized:
+                        if not func.stack_refs:
                             print '\t\t*sp++ = %s;' % (v,)
                         else:
                             print '\t\t%s = %s;' % (sp_name(o.value()), v)

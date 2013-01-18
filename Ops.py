@@ -101,7 +101,7 @@ opcodelist = [
     ( 0x171, 'mcopy',           'lmm'),
     ( 0x178, 'malloc',          'ls'),
     ( 0x179, 'mfree',           'l'),
-    ( 0x180, 'accelfunc',       'lf'),
+    ( 0x180, 'accelfunc',       'll'),
     ( 0x181, 'accelparam',      'll'),
     ( 0x190, 'numtof',          'ls'),
     ( 0x191, 'ftonumz',         'ls'),
@@ -265,6 +265,9 @@ class Instr(Op):
             if oper.is_immediate():
                 target = oper.value()
                 return target
+
+    def is_call(self):
+        return self.parameters.find('f') >= 0
 
     def call_target(self):
 
